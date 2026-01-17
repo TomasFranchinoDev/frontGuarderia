@@ -38,7 +38,7 @@ export default function LocationSection() {
                             Contamos con 3 tamaños de boxes para adaptarnos a tus necesidades
                         </p>
                         <p className="text-slate-600 mb-4 text-sm sm:text-base leading-relaxed">
-                            Ya sea un box pequeño de 4x4 metros, un mediano de 5x5 metros o un grande de 6x6 metros, tenemos la opción perfecta para ti.
+                            Contamos con boxes pequeños, medianos o grandes, diseñados para adaptarse a cualquier tamaño de embarcación.
                         </p>
                         <p className="text-slate-600 text-sm sm:text-base leading-relaxed">
                             Nuestro equipo está listo para atenderte y resolver todas tus consultas. ¡Esperamos verte pronto!
