@@ -2,27 +2,29 @@
 import { useParams, useRouter } from 'next/navigation';
 import { useState, useEffect, use } from 'react';
 import { ArrowLeft, ChevronDown, ChevronUp, Check, AlertCircle } from 'lucide-react';
-import { ClientData } from '@/app/types/api'; 
+import { Footer } from '@/app/components/footer';
+import { Header } from '@/app/components/header';
+import { ClientData } from '@/app/types/api';
 
 // --- CONFIGURACIÓN ---
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-const ADMIN_PHONE = '543493417510'; 
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
+const ADMIN_PHONE = '543493417508';
 
 // Datos bancarios (Hardcoded para la UI)
 const BANK_DATA = {
-  cbu: '0000003100010123456789',
-  alias: 'GUARDERIA.NAUTICA',
-  titular: 'Guardería Náutica Paraná'
+  cbu: '0110509430050973175415',
+  alias: 'TOMAS.FRANCHINO.BNA',
+  titular: 'FRANCHINO TOMAS AGUSTIN',
 };
 export default function Home() {
- const params = useParams();
+  const params = useParams();
   const router = useRouter();
   const clientPhone = params.clientId as string;
 
   const [clientData, setClientData] = useState<ClientData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  
+
   // Estado para el acordeón visual (Traído de estilofront)
   const [showTransferDetails, setShowTransferDetails] = useState(false);
 
@@ -47,14 +49,14 @@ export default function Home() {
 
   const handleWhatsAppClick = (type: 'DEBT' | 'PREPAY', details?: string) => {
     if (!clientData) return;
-    
+
     let text = '';
     if (type === 'DEBT') {
-        text = `Hola, soy ${clientData.name} (Box ${clientData.box_number}). Envío comprobante de pago de la cuota mensual.`;
+      text = `Hola, soy ${clientData.name} (Box ${clientData.box_number}). A continuacion envío comprobante del pago.`;
     } else {
-        text = `Hola, soy ${clientData.name}. Me interesa el plan de *${details}* para congelar precio. Envío comprobante.`;
+      text = `Hola, soy ${clientData.name}. Me interesa el plan de *${details}* para fijar el precio.`;
     }
-    
+
     const message = encodeURIComponent(text);
     window.open(`https://wa.me/${ADMIN_PHONE}?text=${message}`, '_blank');
   };
@@ -89,23 +91,24 @@ export default function Home() {
   return (
     // Usamos bg-gray-100 para simular bg-secondary
     <div className="min-h-screen bg-gray-100 text-gray-900 font-sans">
-      
+      <Header />
       {/* Header with back button */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-md mx-auto px-4 py-4">
-          <button 
-            onClick={() => router.push('/')}
-            className="flex items-center text-gray-900 hover:text-blue-600 transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5 mr-2" />
-            <span className="font-medium">Volver</span>
-          </button>
-        </div>
+
+
+      <div className="max-w-md mx-auto py-8">
+        <button
+          onClick={() => router.push('/')}
+          className="flex items-center text-gray-900 hover:text-blue-600 transition-colors"
+        >
+          <ArrowLeft className="w-5 h-5 mr-2" />
+          <span className="font-medium">Volver</span>
+        </button>
       </div>
 
       {/* Main Content */}
-      <div className="max-w-md mx-auto px-4 py-8">
+      <div className="max-w-md mx-auto pb-8">
         {/* Greeting */}
+
         <h1 className="text-2xl font-medium text-center mb-6">
           Hola, <span className="font-bold">{clientData.name}</span>
         </h1>
@@ -114,7 +117,7 @@ export default function Home() {
           <>
             {/* --- ESTADO: CON DEUDA (Estilo EstiloFront) --- */}
             <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden mb-6">
-              
+
               {/* Header Rojo */}
               <div className="bg-red-600 text-white px-6 py-4 text-center">
                 <h2 className="text-xl font-bold tracking-wide">TIENES UN PAGO PENDIENTE</h2>
@@ -134,8 +137,8 @@ export default function Home() {
                       <div key={p.id} className="flex justify-between items-center text-sm border-b border-gray-200 pb-2 last:border-0">
                         <span className="text-gray-500 capitalize">{p.month_period}</span>
                         <div className="flex items-center gap-2">
-                           {/* Si quisieras mostrar precio original tachado, podrías hacerlo aquí */}
-                           <span className="font-semibold text-gray-900">
+                          {/* Si quisieras mostrar precio original tachado, podrías hacerlo aquí */}
+                          <span className="font-semibold text-gray-900">
                             ${p.amount.toLocaleString("es-AR")}
                           </span>
                         </div>
@@ -156,7 +159,7 @@ export default function Home() {
                             $ {clientData.current_debt.toLocaleString("es-AR")}
                           </span>
                         </div>
-                        <p className="text-xs text-right text-green-700 font-medium">(10% OFF incluido)</p>
+                        <p className="text-xs text-right text-green-700 font-medium">(8% OFF incluido)</p>
                       </>
                     ) : (
                       <div className="flex justify-between items-center">
@@ -167,7 +170,7 @@ export default function Home() {
                       </div>
                     )}
                   </div>
-                  
+
                   {/* Aviso de vencimiento (Estético) */}
                   {clientData.has_discount_current_month && (
                     <div className="bg-red-50 rounded-md px-4 py-2 text-center border border-red-100">
@@ -180,7 +183,7 @@ export default function Home() {
 
                 {/* Instructions */}
                 <p className="text-sm text-gray-500 text-center mb-4">
-                  Para pagar, transfiere y envía el comprobante por WhatsApp:
+                  Coordina el pago en efectivo o por transferencia y envía el comprobante por WhatsApp:
                 </p>
 
                 {/* WhatsApp CTA Button (Estilo Shadcn Button size=lg) */}
@@ -257,39 +260,40 @@ export default function Home() {
 
         {/* --- SECCIÓN: CONGELAR PRECIO (Adaptada al estilo EstiloFront) --- */}
         <div className="mt-8">
-           <div className="flex items-center justify-center gap-2 mb-4 text-gray-800">
-             <span className="text-xl">🚀</span>
-             <h3 className="text-lg font-bold">Congelá el Precio</h3>
-           </div>
-           
-           <div className="grid gap-3">
-             {clientData.prepayment_options.map((option) => (
-               <div key={option.months} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm relative overflow-hidden flex justify-between items-center">
-                 
-                 {/* Badge de Ahorro */}
-                 <div className="absolute top-0 right-0 bg-blue-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-bl-lg">
-                   AHORRA ${option.savings.toLocaleString('es-AR')}
-                 </div>
+          <div className="flex items-center justify-center gap-2 mb-4 text-gray-800">
+            <span className="text-xl">🎣</span>
+            <h3 className="text-lg font-bold">Fija el Precio</h3>
+          </div>
 
-                 <div>
-                    <p className="text-gray-500 text-xs font-bold uppercase tracking-wider mb-0.5">{option.months} Meses</p>
-                    <p className="text-xl font-bold text-gray-900">
-                      ${option.total_amount.toLocaleString('es-AR')}
-                    </p>
-                 </div>
+          <div className="grid gap-3">
+            {clientData.prepayment_options.map((option) => (
+              <div key={option.months} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm relative overflow-hidden flex justify-between items-center">
 
-                 <button 
-                   onClick={() => handleWhatsAppClick('PREPAY', `${option.months} meses`)}
-                   className="text-blue-600 border border-blue-200 hover:bg-blue-50 font-medium py-2 px-4 rounded-md text-sm transition-colors"
-                 >
-                   Elegir
-                 </button>
-               </div>
-             ))}
-           </div>
+                {/* Badge de Ahorro */}
+                <div className="absolute top-0 right-0 bg-blue-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-bl-lg">
+                  AHORRA ${option.savings.toLocaleString('es-AR')}
+                </div>
+
+                <div>
+                  <p className="text-gray-500 text-xs font-bold uppercase tracking-wider mb-0.5">{option.months} Meses</p>
+                  <p className="text-xl font-bold text-gray-900">
+                    ${option.total_amount.toLocaleString('es-AR')}
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => handleWhatsAppClick('PREPAY', `${option.months} meses`)}
+                  className="text-blue-600 border border-blue-200 hover:bg-blue-50 font-medium py-2 px-4 rounded-md text-sm transition-colors"
+                >
+                  Elegir
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
 
       </div>
+      <Footer />
     </div>
   );
 }

@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Guardería Náutica - Consulta de Pagos",
-  description: "Consulta el estado de tus pagos en la guardería náutica",
+  title: "Guardería La Chueca - Consulta de Pagos",
+  description: "Consulta el estado de tus pagos en la guardería La Chueca",
 };
 
 export default function RootLayout({

@@ -4,7 +4,7 @@ const features = [
   {
     icon: Anchor,
     title: "Servicios",
-    description: "Amarradero seguro para embarcaciones de todos los tamaños con acceso las 24 horas del día.",
+    description: "Guarderia para embarcaciones de todos los tamaños con acceso las 24 horas del día.",
   },
   {
     icon: Shield,
@@ -13,8 +13,8 @@ const features = [
   },
   {
     icon: Fish,
-    title: "Pesca Paraná",
-    description: "Ubicación privilegiada en el Río Paraná, ideal para los amantes de la pesca deportiva.",
+    title: "Pesca Saladero",
+    description: "Ubicación privilegiada en el Río San Javier, ideal para los amantes de la pesca deportiva.",
   },
   {
     icon: Mail,
@@ -25,7 +25,7 @@ const features = [
 
 export function FeaturesSection() {
   return (
-    <section className="bg-card py-16 md:py-24 px-4">
+    <section id="nosotros" className="bg-card text-[#0D253F] py-16 md:py-24 px-4">
       <div className="container mx-auto">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-12">
           {features.map((feature, index) => {

@@ -12,16 +12,21 @@ export function Header() {
         <div className="flex items-center justify-between">
           {/* Logo */}
           <div className="flex items-center gap-3">
-            <Ship className="h-8 w-8" strokeWidth={2} />
-            <span className="text-xl font-bold">Guardería Náutica</span>
+            <div style={{
+              backgroundImage: 'url("/image.jpg")',
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              backgroundRepeat: 'no-repeat',
+            }} className="h-12 w-12 rounded-full" />
+            <span className="text-xl font-bold">Guardería La Chueca</span>
           </div>
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-8">
-            <a href="#inicio" className="font-semibold hover:opacity-80 transition-opacity">
+            <a href="/" className="font-semibold hover:opacity-80 transition-opacity">
               Inicio
             </a>
-            <a href="#nosotros" className="font-semibold hover:opacity-80 transition-opacity">
+            <a href="/#nosotros" className="font-semibold hover:opacity-80 transition-opacity">
               Nosotros
             </a>
             <a href="#contacto" className="font-semibold hover:opacity-80 transition-opacity">
