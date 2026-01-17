@@ -15,6 +15,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Guardería La Chueca - Consulta de Pagos",
   description: "Consulta el estado de tus pagos en la guardería La Chueca",
+  icons: { icon: "/image.jpg" },
 };
 
 export default function RootLayout({
