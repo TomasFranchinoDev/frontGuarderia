@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import {
     Lock, Settings, Users, Search, Plus,
-    Trash2, Edit2, Check, X, DollarSign, Save
+    Trash2, Edit2, Check, X, DollarSign, Save, Clock, RefreshCw
 } from 'lucide-react';
 
 // --- TIPOS (Types) ---
@@ -25,13 +25,23 @@ type Client = {
     current_debt: number;
 };
 
+type WaitlistEntry = {
+    id: string;
+    name: string;
+    email: string;
+    phone: string;
+    box_size: string;
+    message?: string | null;
+    created_at?: string | null;
+};
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export default function AdminPage() {
     // --- ESTADOS GLOBALES ---
     const [secret, setSecret] = useState('');
     const [isAuthenticated, setIsAuthenticated] = useState(false);
-    const [activeTab, setActiveTab] = useState<'clients' | 'settings'>('clients');
+    const [activeTab, setActiveTab] = useState<'clients' | 'settings' | 'waitlist'>('clients');
     const [loading, setLoading] = useState(false);
     const [loginError, setLoginError] = useState('');
 
@@ -111,6 +121,13 @@ export default function AdminPage() {
                     <Users size={18} /> Clientes y Pagos
                 </button>
                 <button
+                    onClick={() => setActiveTab('waitlist')}
+                    className={`px-4 py-3 md:px-6 flex items-center gap-2 text-sm md:text-base font-medium border-b-2 transition-colors whitespace-nowrap ${activeTab === 'waitlist' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-800'
+                        }`}
+                >
+                    <Clock size={18} /> Lista de Espera
+                </button>
+                <button
                     onClick={() => setActiveTab('settings')}
                     className={`px-4 py-3 md:px-6 flex items-center gap-2 text-sm md:text-base font-medium border-b-2 transition-colors whitespace-nowrap ${activeTab === 'settings' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-800'
                         }`}
@@ -123,6 +140,7 @@ export default function AdminPage() {
             <main className="flex-1 container mx-auto p-4 md:p-6">
                 {activeTab === 'settings' && <SettingsView secret={secret} />}
                 {activeTab === 'clients' && <ClientsView secret={secret} />}
+                {activeTab === 'waitlist' && <WaitlistView secret={secret} />}
             </main>
         </div>
     );
@@ -1073,6 +1091,230 @@ function CreatePaymentModal({ clientId, secret, onClose, onCreated }: { clientId
                         </button>
                     </div>
                 </div>
+            </div>
+        </div>
+    );
+}
+
+// ==========================================
+// VISTA 3: LISTA DE ESPERA (WAITLIST)
+// ==========================================
+function WaitlistView({ secret }: { secret: string }) {
+    const [waitlist, setWaitlist] = useState<WaitlistEntry[]>([]);
+    const [search, setSearch] = useState('');
+    const [listMsg, setListMsg] = useState('');
+    const [deletingId, setDeletingId] = useState<string | null>(null);
+    const [loading, setLoading] = useState(false);
+
+    const fetchWaitlist = async () => {
+        setLoading(true);
+        try {
+            if (!API_URL) {
+                setWaitlist([]);
+                setListMsg('Error: API_URL no configurada');
+                setLoading(false);
+                return;
+            }
+
+            const url = `${API_URL}/admin/waiting-list`;
+            console.log('Fetching waitlist from:', url);
+
+            const res = await fetch(url, {
+                headers: { 'x-admin-secret': secret }
+            });
+
+            console.log('Response status:', res.status);
+
+            if (!res.ok) {
+                const errorText = await res.text();
+                console.error('Error response:', errorText);
+                setWaitlist([]);
+                setListMsg(`Error al cargar: ${res.status} - ${errorText || 'Error desconocido'}`);
+                setLoading(false);
+                return;
+            }
+
+            const data = await res.json();
+            console.log('Waitlist data:', data);
+            setWaitlist(Array.isArray(data) ? data : []);
+            setListMsg(Array.isArray(data) && data.length === 0 ? 'No hay personas en la lista de espera' : '');
+        } catch (e) {
+            console.error('Fetch error:', e);
+            setWaitlist([]);
+            setListMsg(`Error: ${e instanceof Error ? e.message : 'Error de red'}`);
+        }
+        setLoading(false);
+    };
+
+    useEffect(() => {
+        fetchWaitlist();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [secret]);
+
+    // Filtrado simple frontend por nombre o email
+    const filteredWaitlist = waitlist.filter(entry =>
+        entry.name.toLowerCase().includes(search.toLowerCase()) ||
+        entry.email.toLowerCase().includes(search.toLowerCase())
+    );
+
+    const handleDeleteEntry = async (entry: WaitlistEntry) => {
+        const ok = window.confirm(`¿Eliminar a ${entry.name} de la lista de espera?`);
+        if (!ok) return;
+        setDeletingId(entry.id);
+        try {
+            const res = await fetch(`${API_URL}/admin/waiting-list/${entry.id}`, {
+                method: 'DELETE',
+                headers: { 'x-admin-secret': secret }
+            });
+            if (!res.ok) {
+                const text = await res.text();
+                alert(text || 'No se pudo eliminar el registro');
+                setDeletingId(null);
+                return;
+            }
+            await fetchWaitlist();
+        } catch (e) {
+            alert('Error de red al eliminar');
+        } finally {
+            setDeletingId(null);
+        }
+    };
+
+    const formatDate = (dateString?: string | null) => {
+        if (!dateString) return 'N/A';
+        try {
+            return new Date(dateString).toLocaleDateString('es-AR', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            });
+        } catch {
+            return dateString;
+        }
+    };
+
+    return (
+        <div>
+            {/* Barra de Herramientas */}
+            <div className="flex flex-col md:flex-row md:justify-between gap-3 md:gap-0 mb-4 md:mb-6">
+                <div className="relative flex-1 sm:flex-initial sm:w-64 md:w-72">
+                    <Search className="absolute left-3 top-2.5 md:top-3 text-gray-400" size={18} />
+                    <input
+                        type="text"
+                        placeholder="Filtrar por nombre o email"
+                        value={search}
+                        onChange={e => setSearch(e.target.value)}
+                        className="w-full pl-10 pr-3 md:pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm md:text-base"
+                    />
+                </div>
+                <button
+                    onClick={fetchWaitlist}
+                    disabled={loading}
+                    className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2 hover:bg-blue-700 disabled:opacity-50 text-sm md:text-base"
+                >
+                    <RefreshCw size={18} className={loading ? 'animate-spin' : ''} /> Refrescar
+                </button>
+            </div>
+
+            {/* Tabla de Espera - Desktop */}
+            <div className="hidden md:block bg-white rounded-xl shadow overflow-hidden">
+                <table className="w-full text-left border-collapse text-sm">
+                    <thead className="bg-gray-50 text-gray-600 uppercase">
+                        <tr>
+                            <th className="px-6 py-4">Nombre</th>
+                            <th className="px-6 py-4">Email</th>
+                            <th className="px-6 py-4">Teléfono</th>
+                            <th className="px-6 py-4">Box Solicitado</th>
+                            <th className="px-6 py-4">Mensaje</th>
+                            <th className="px-6 py-4">Fecha Registro</th>
+                            <th className="px-6 py-4 text-center">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                        {filteredWaitlist.map(entry => (
+                            <tr key={entry.id} className="hover:bg-gray-50 transition">
+                                <td className="px-6 py-4 font-medium text-gray-900">{entry.name}</td>
+                                <td className="px-6 py-4 text-gray-600">{entry.email}</td>
+                                <td className="px-6 py-4 text-gray-600">{entry.phone}</td>
+                                <td className="px-6 py-4">
+                                    <span className="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-xs font-semibold">
+                                        {entry.box_size}
+                                    </span>
+                                </td>
+                                <td className="px-6 py-4 text-gray-600 max-w-xs truncate" title={entry.message || 'Sin mensaje'}>
+                                    {entry.message || '-'}
+                                </td>
+                                <td className="px-6 py-4 text-gray-600 text-sm">
+                                    {formatDate(entry.created_at)}
+                                </td>
+                                <td className="px-6 py-4 flex justify-center">
+                                    <button
+                                        onClick={() => handleDeleteEntry(entry)}
+                                        disabled={deletingId === entry.id}
+                                        className="text-red-600 hover:text-red-800 text-sm font-medium flex items-center gap-1 disabled:opacity-50"
+                                        title="Eliminar de lista de espera"
+                                    >
+                                        <Trash2 size={16} /> {deletingId === entry.id ? 'Eliminando...' : 'Eliminar'}
+                                    </button>
+                                </td>
+                            </tr>
+                        ))}
+                        {filteredWaitlist.length === 0 && (
+                            <tr>
+                                <td colSpan={7} className="px-6 py-8 text-center text-gray-400">
+                                    {listMsg || 'No se encontraron registros'}
+                                </td>
+                            </tr>
+                        )}
+                    </tbody>
+                </table>
+            </div>
+
+            {/* Tarjetas de Espera - Mobile */}
+            <div className="md:hidden space-y-3">
+                {filteredWaitlist.map(entry => (
+                    <div key={entry.id} className="bg-white rounded-xl shadow p-4">
+                        <div className="flex justify-between items-start mb-3">
+                            <div className="flex-1">
+                                <h3 className="font-bold text-gray-800 text-base mb-1">{entry.name}</h3>
+                                <p className="text-xs text-gray-500 break-all">{entry.email}</p>
+                            </div>
+                            <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded text-xs font-semibold ml-2 whitespace-nowrap">
+                                {entry.box_size}
+                            </span>
+                        </div>
+
+                        <div className="space-y-2 mb-3 text-sm">
+                            <div className="flex items-start gap-2">
+                                <span className="text-gray-500 font-medium flex-shrink-0">Tel:</span>
+                                <span className="text-gray-700">{entry.phone}</span>
+                            </div>
+                            {entry.message && (
+                                <div className="flex items-start gap-2">
+                                    <span className="text-gray-500 font-medium flex-shrink-0">Msg:</span>
+                                    <span className="text-gray-700">{entry.message}</span>
+                                </div>
+                            )}
+                            <div className="flex items-start gap-2">
+                                <span className="text-gray-500 font-medium flex-shrink-0">Fecha:</span>
+                                <span className="text-gray-700 text-xs">{formatDate(entry.created_at)}</span>
+                            </div>
+                        </div>
+
+                        <button
+                            onClick={() => handleDeleteEntry(entry)}
+                            disabled={deletingId === entry.id}
+                            className="w-full bg-red-50 text-red-600 py-2 px-3 rounded-lg text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50"
+                        >
+                            <Trash2 size={16} /> {deletingId === entry.id ? 'Eliminando...' : 'Eliminar'}
+                        </button>
+                    </div>
+                ))}
+                {filteredWaitlist.length === 0 && (
+                    <div className="bg-white rounded-xl shadow p-8 text-center text-gray-400">
+                        {listMsg || 'No se encontraron registros'}
+                    </div>
+                )}
             </div>
         </div>
     );

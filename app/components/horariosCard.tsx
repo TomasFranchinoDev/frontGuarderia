@@ -8,7 +8,7 @@ export default function LocationSection() {
             <div className="max-w-7xl mx-auto">
 
                 {/* Grid de contenido 2x2 */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 mb-8 sm:mb-12">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 ">
                     {/* Imagen - Arriba Izquierda */}
                     <div className="relative overflow-hidden rounded-2xl shadow-xl h-64 sm:h-80 md:h-96 group">
                         {/* Imagen */}
@@ -35,10 +35,10 @@ export default function LocationSection() {
                             <img className='h-16 w-16' src="border-top-svgrepo-com.svg" /> Dimensiones de los Boxes
                         </h3>
                         <p className="text-slate-600 mb-4 text-sm sm:text-base leading-relaxed">
-                            Contamos con 3 tamaños de boxes para adaptarnos a tus necesidades
+                            Contamos con 3 tamaños de boxes.
                         </p>
                         <p className="text-slate-600 mb-4 text-sm sm:text-base leading-relaxed">
-                            Contamos con boxes pequeños, medianos o grandes, diseñados para adaptarse a cualquier tamaño de embarcación.
+                            Pequeños, medianos o grandes, diseñados para adaptarse a cualquier tamaño de embarcación.
                         </p>
                         <p className="text-slate-600 text-sm sm:text-base leading-relaxed">
                             Nuestro equipo está listo para atenderte y resolver todas tus consultas. ¡Esperamos verte pronto!

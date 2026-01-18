@@ -73,15 +73,15 @@ export default function WaitingListSection() {
     };
 
     return (
-        <section className="py-16 px-4 bg-gradient-to-b from-gray-50 to-white">
+        <section className="py-8 px-4 bg-gradient-to-b from-gray-50 to-white">
             <div className="max-w-6xl mx-auto">
                 <div className="grid md:grid-cols-2 gap-8 items-center">
                     {/* Columna Izquierda - Información */}
-                    <div className="space-y-6">
-                        <div className="inline-block pl-4">
+                    <div className="space-y-6 text-center md:text-left">
+                        <div className="flex justify-center md:justify-start md:pl-4 pr-4">
                             <div className=" text-white w-26 h-26 rounded-lg flex items-center justify-center">
                                 <img src="/image.svg" alt="" />
-                                <h3 className='text-black font-bold'>GUARDERIA LA CHUECA</h3>
+                                <h3 className='text-gray-900 font-bold '>GUARDERIA LA CHUECA</h3>
                             </div>
                         </div>
 
@@ -93,19 +93,21 @@ export default function WaitingListSection() {
                             ¿Interesado en nuestros servicios de guardería de lanchas? Completa el formulario y te contactaremos cuando haya disponibilidad.
                         </p>
 
-                        <div className="space-y-4">
+                        <div className="space-y-4 flex flex-col items-center md:items-start">
                             <div className="flex items-start gap-3">
-                                <div className="w-2 h-2 bg-blue-600 rounded-full mt-2"></div>
-                                <p className="text-gray-600">Acceso las 24 horas del día</p>
+                                <div className="w-2 h-2 bg-[#0D253F] rounded-full mt-2"></div>
+                                <p className="text-gray-600">Ubicación privilegiada en el Río San Javier</p>
                             </div>
+
                             <div className="flex items-start gap-3">
-                                <div className="w-2 h-2 bg-blue-600 rounded-full mt-2"></div>
+                                <div className="w-2 h-2 bg-[#0D253F] rounded-full mt-2"></div>
                                 <p className="text-gray-600">Seguridad continua con monitoreo</p>
                             </div>
                             <div className="flex items-start gap-3">
-                                <div className="w-2 h-2 bg-blue-600 rounded-full mt-2"></div>
-                                <p className="text-gray-600">Ubicación privilegiada en el Río San Javier</p>
+                                <div className="w-2 h-2 bg-[#0D253F] rounded-full mt-2"></div>
+                                <p className="text-gray-600">Acceso las 24 horas del día</p>
                             </div>
+
                         </div>
                     </div>
 
