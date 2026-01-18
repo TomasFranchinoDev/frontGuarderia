@@ -30,7 +30,7 @@ export default function Home() {
 
       <div
         style={{
-          backgroundImage: 'url("/guarderia-fondo.webp")',
+          backgroundImage: 'url("/rio-parana.webp")',
           backgroundSize: 'cover',
           backgroundPosition: 'center',
           backgroundRepeat: 'no-repeat',
