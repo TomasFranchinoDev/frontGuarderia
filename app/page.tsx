@@ -7,6 +7,7 @@ import { Footer } from './components/footer';
 import { Header } from './components/header';
 import { HeroSection } from './components/hero-section';
 import HorariosCard from './components/horariosCard';
+import WaitingListSection from './components/form';
 
 const ADMIN_WHATSAPP = '5493417508'; // Tu número
 
@@ -83,6 +84,7 @@ export default function Home() {
         </main>
       </div>
       <FeaturesSection />
+      <WaitingListSection />
       <HorariosCard />
       <Footer />
     </div>
