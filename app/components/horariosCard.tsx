@@ -32,7 +32,7 @@ export default function LocationSection() {
                     <div className="bg-white rounded-2xl shadow-xl p-6 sm:p-8 md:p-10 flex flex-col justify-center">
 
                         <h3 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-4">
-                            <img className='h-16 w-16' src="border-top-svgrepo-com.svg" /> Dimensiones de los Boxes
+                            <img alt='Icono Dimensiones' className='h-16 w-16' src="border-top-svgrepo-com.svg" /> Dimensiones de los Boxes
                         </h3>
                         <p className="text-slate-600 mb-4 text-sm sm:text-base leading-relaxed">
                             Contamos con 3 tamaños de boxes.
@@ -48,7 +48,7 @@ export default function LocationSection() {
                     {/* Texto - Abajo Izquierda */}
                     <div className="bg-white rounded-2xl shadow-xl p-6 sm:p-8 md:p-10 flex flex-col justify-center">
                         <h3 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-4">
-                            <img className='h-12 w-12' src="place-svgrepo-com.svg" /> Ubicación
+                            <img alt="Icono Ubicación" className='h-12 w-12' src="place-svgrepo-com.svg" /> Ubicación
                         </h3>
                         <p className="text-slate-600 mb-4 text-sm sm:text-base leading-relaxed">
                             Fácil Acceso a 4 cuadras de la Ruta 1 y del Río San Javier
@@ -63,11 +63,12 @@ export default function LocationSection() {
 
                     {/* Mapa - Abajo Derecha */}
                     <div className="relative overflow-hidden rounded-2xl shadow-xl h-64 sm:h-80 md:h-96">
-                        <iframe 
-                            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d856.0731662383406!2d-60.03437233045229!3d-30.87847284739325!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x95b4b10057ee6711%3A0xfb5669fe2ead5935!2sGuarderia%20La%20Chueca!5e0!3m2!1ses-419!2sar!4v1768759952174!5m2!1ses-419!2sar" 
-                            width="600" 
-                            height="450" 
-                            style={{ border: 0 }} 
+                        <iframe
+                            title="Mapa de Google"
+                            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d856.0731662383406!2d-60.03437233045229!3d-30.87847284739325!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x95b4b10057ee6711%3A0xfb5669fe2ead5935!2sGuarderia%20La%20Chueca!5e0!3m2!1ses-419!2sar!4v1768759952174!5m2!1ses-419!2sar"
+                            width="600"
+                            height="450"
+                            style={{ border: 0 }}
                             referrerPolicy="no-referrer-when-downgrade">
                         </iframe>
                     </div>

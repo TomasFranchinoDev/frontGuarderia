@@ -7,10 +7,13 @@ import { FeaturesSection } from './components/features-section';
 import { Footer } from './components/footer';
 import { Header } from './components/header';
 import HorariosCard from './components/horariosCard';
-import WaitingListSection from './components/form';
+import dynamic from 'next/dynamic';
 
 const ADMIN_WHATSAPP = '5493417508'; // Tu número
-
+const WaitingListSection = dynamic(() => import('./components/form'), {
+  loading: () => <div className="min-h-screen" />,
+  ssr: false,
+});
 export default function Home() {
   const [phone, setPhone] = useState('');
   const router = useRouter();
@@ -34,6 +37,7 @@ export default function Home() {
           src="/rio-parana.webp"
           alt="Vista del río Paraná"
           fill
+          fetchPriority='high'
           priority
           sizes="100vw"
           className="object-cover"
