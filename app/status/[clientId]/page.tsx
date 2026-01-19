@@ -133,17 +133,42 @@ export default function Home() {
 
                   {/* Lista de meses pendientes */}
                   <div className="space-y-3 mb-4">
-                    {pendingPayments.map((p) => (
-                      <div key={p.id} className="flex justify-between items-center text-sm border-b border-gray-200 pb-2 last:border-0">
-                        <span className="text-gray-500 capitalize">{p.month_period}</span>
-                        <div className="flex items-center gap-2">
-                          {/* Si quisieras mostrar precio original tachado, podrías hacerlo aquí */}
-                          <span className="font-semibold text-gray-900">
-                            ${p.amount.toLocaleString("es-AR")}
-                          </span>
+                    {pendingPayments.map((p) => {
+                      // Verificamos si este pago corresponde al mes actual y si el cliente tiene descuento habilitado
+                      // Nota: Asegúrate de que p.month_period sea comparable con el mes actual de la forma que lo haces
+                      const isCurrentMonth = p.month_period.slice(5, 7) === (new Date().getMonth() + 1).toString().padStart(2, '0');
+                      const hasDiscount = clientData.has_discount_current_month && isCurrentMonth;
+
+                      // Calculamos el precio con descuento (ajusta el 0.08 al porcentaje real que uses en el backend)
+                      const discountedPrice = p.amount * (1 - 0.08);
+
+                      return (
+                        <div key={p.id} className="flex justify-between items-center text-sm border-b border-gray-200 pb-2 last:border-0">
+                          <span className="text-gray-500 capitalize">{p.month_period}</span>
+
+                          <div className="flex items-center gap-2">
+                            {hasDiscount ? (
+                              <>
+                                {/* 1. Precio Original: Gris y Tachado */}
+                                <span className="text-gray-400 line-through text-xs">
+                                  ${p.amount.toLocaleString("es-AR")}
+                                </span>
+
+                                {/* 2. Precio con Descuento: Verde y Destacado */}
+                                <span className="font-bold text-green-600">
+                                  ${discountedPrice.toLocaleString("es-AR")}
+                                </span>
+                              </>
+                            ) : (
+                              /* Si no hay descuento, mostramos el precio normal en gris oscuro/negro */
+                              <span className="font-semibold text-gray-900">
+                                ${p.amount.toLocaleString("es-AR")}
+                              </span>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
 
                   {/* Sección de Total y Descuento */}
