@@ -151,7 +151,7 @@ export default function Home() {
                     {clientData.has_discount_current_month ? (
                       <>
                         <p className="text-sm font-medium text-green-600 mb-2">
-                          🔥 PAGANDO ANTES DEL DÍA 10:
+                          🔥 PAGANDO ANTES DEL DÍA 25:
                         </p>
                         <div className="flex justify-between items-center">
                           <span className="font-bold text-gray-700">Total con Desc.:</span>
