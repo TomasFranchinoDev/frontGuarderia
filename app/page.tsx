@@ -1,11 +1,11 @@
 'use client';
 
+import Image from 'next/image';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { FeaturesSection } from './components/features-section';
 import { Footer } from './components/footer';
 import { Header } from './components/header';
-import { HeroSection } from './components/hero-section';
 import HorariosCard from './components/horariosCard';
 import WaitingListSection from './components/form';
 
@@ -25,29 +25,35 @@ export default function Home() {
 
   return (
     <div>
-
-
       <Header />
-
       <div
-        style={{
-          backgroundImage: 'url("/rio-parana.webp")',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat',
-        }}
-        className="flex min-h-screen items-center justify-center bg-gradient-to-b from-blue-50 to-blue-100 px-4 py-8">
-        <main className="w-full max-w-md">
+        id="inicio"
+        className="relative flex min-h-screen items-center justify-center bg-gradient-to-b from-blue-50 to-blue-100 px-4 py-8 overflow-hidden"
+      >
+        <Image
+          src="/rio-parana.webp"
+          alt="Vista del río Paraná"
+          fill
+          priority
+          sizes="100vw"
+          className="object-cover"
+          style={{ zIndex: 0 }}
+        />
+        <div className="absolute inset-0 -z-10 bg-gradient-to-b from-blue-900/40 to-blue-900/10" />
+
+        <main className="relative z-10 w-full max-w-md">
           <div className="bg-white rounded-2xl shadow-xl p-8">
             <div className="flex flex-col items-center mb-2">
               <div className="mb-2 text-blue-600">
-                {/* Icono de Ancla/Barco */}
-                <div style={{
-                  backgroundImage: 'url("/image.png")',
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center',
-                  backgroundRepeat: 'no-repeat',
-                }} className="h-60 w-60" />              </div>
+                <Image
+                  src="/image-sin-fondo.webp"
+                  alt="Identidad visual de la guardería"
+                  width={240}
+                  height={240}
+                  sizes="(max-width: 768px) 60vw, 240px"
+                  className="h-60 w-60 object-contain"
+                />
+              </div>
 
               <p className="text-lg text-gray-600 text-center mt-3">
                 Consulta tu Estado
