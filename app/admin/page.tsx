@@ -212,31 +212,45 @@ function SettingsView({ secret }: { secret: string }) {
         setLoading(false);
     };
 
-    const handleGenerateMonthlyDebt = async () => {
-        setDebtMsg('');
-        const ok = window.confirm('¿Generar cuotas mensuales para todos los clientes activos del mes actual?');
-        if (!ok) return;
+    // Reemplaza estas dos funciones:
+// - handleGenerateMonthlyDebt
+// - handleGenerateNextMonthDebt
 
-        setGeneratingDebt(true);
-        try {
-            const res = await fetch(`${API_URL}/webhook/generate-monthly-debt`, {
-                method: 'POST',
-                headers: { 'x-webhook-secret': secret }
-            });
+// Con esta nueva función unificada:
+const handleGenerateDebt = async (isNextMonth: boolean = false) => {
+    setDebtMsg('');
+    const monthText = isNextMonth ? 'del mes siguiente' : 'del mes actual';
+    const ok = window.confirm(`¿Generar cuotas mensuales para todos los clientes activos ${monthText}?`);
+    if (!ok) return;
 
-            if (!res.ok) {
-                setDebtMsg('❌ Error al generar deudas');
-                setGeneratingDebt(false);
-                return;
-            }
-
-            const data = await res.json();
-            setDebtMsg(`✅ ${data.message}. Periodo: ${data.period}. Pagos creados: ${data.payments_created}`);
-        } catch (e) {
-            setDebtMsg('❌ Error de conexión al generar deudas');
+    setGeneratingDebt(true);
+    try {
+        const params = new URLSearchParams();
+        if (isNextMonth) {
+            params.append('next_month', 'true');
         }
-        setGeneratingDebt(false);
-    };
+
+        const url = new URL(`${API_URL}/webhook/generate-monthly-debt`);
+        url.search = params.toString();
+
+        const res = await fetch(url.toString(), {
+            method: 'POST',
+            headers: { 'x-webhook-secret': secret }
+        });
+
+        if (!res.ok) {
+            setDebtMsg('❌ Error al generar deudas');
+            setGeneratingDebt(false);
+            return;
+        }
+
+        const data = await res.json();
+        setDebtMsg(`✅ ${data.message}. Periodo: ${data.period}. Pagos creados: ${data.payments_created}`);
+    } catch (e) {
+        setDebtMsg('❌ Error de conexión al generar deudas');
+    }
+    setGeneratingDebt(false);
+};
 
     return (
         <div className="space-y-4 md:space-y-6 max-w-full md:max-w-md md:mx-auto">
@@ -273,25 +287,45 @@ function SettingsView({ secret }: { secret: string }) {
                 </div>
             </div>
 
-            {/* Sección de Generar Deudas Mensuales */}
-            <div className="bg-white rounded-xl shadow p-4 md:p-6">
-                <h3 className="text-base md:text-lg font-bold text-gray-800 mb-3 md:mb-4 flex items-center gap-2">
-                    <DollarSign className="text-orange-600" size={20} />
-                    Generar Deudas Mensuales
-                </h3>
-                <p className="text-xs md:text-sm text-gray-500 mb-3 md:mb-4">
-                    Crea automáticamente las cuotas del mes actual para todos los clientes activos que aún no tengan una cuota registrada este mes.
-                </p>
+            {/* Sección de Generar Deudas Mensuales - Mes Actual */}
+<div className="bg-white rounded-xl shadow p-4 md:p-6">
+    <h3 className="text-base md:text-lg font-bold text-gray-800 mb-3 md:mb-4 flex items-center gap-2">
+        <DollarSign className="text-orange-600" size={20} />
+        Generar Deudas del Mes Actual
+    </h3>
+    <p className="text-xs md:text-sm text-gray-500 mb-3 md:mb-4">
+        Crea automáticamente las cuotas del mes actual para todos los clientes activos.
+    </p>
 
-                <button
-                    onClick={handleGenerateMonthlyDebt}
-                    disabled={generatingDebt}
-                    className="w-full bg-orange-600 text-white font-bold py-2 md:py-3 rounded-lg hover:bg-orange-700 disabled:opacity-50 text-sm md:text-base"
-                >
-                    {generatingDebt ? 'Generando...' : 'Generar Cuotas del Mes'}
-                </button>
-                {debtMsg && <p className="text-center text-xs md:text-sm font-medium mt-3 animate-pulse">{debtMsg}</p>}
-            </div>
+    <button
+        onClick={() => handleGenerateDebt(false)}
+        disabled={generatingDebt}
+        className="w-full bg-orange-600 text-white font-bold py-2 md:py-3 rounded-lg hover:bg-orange-700 disabled:opacity-50 text-sm md:text-base"
+    >
+        {generatingDebt ? 'Generando...' : 'Generar Cuotas del Mes Actual'}
+    </button>
+    {debtMsg && <p className="text-center text-xs md:text-sm font-medium mt-3 animate-pulse">{debtMsg}</p>}
+</div>
+
+{/* Sección de Generar Deudas Mensuales - Mes Siguiente */}
+<div className="bg-white rounded-xl shadow p-4 md:p-6">
+    <h3 className="text-base md:text-lg font-bold text-gray-800 mb-3 md:mb-4 flex items-center gap-2">
+        <DollarSign className="text-orange-600" size={20} />
+        Generar Deudas del Mes Siguiente
+    </h3>
+    <p className="text-xs md:text-sm text-gray-500 mb-3 md:mb-4">
+        Crea automáticamente las cuotas del próximo mes para todos los clientes activos.
+    </p>
+
+    <button
+        onClick={() => handleGenerateDebt(true)}
+        disabled={generatingDebt}
+        className="w-full bg-orange-600 text-white font-bold py-2 md:py-3 rounded-lg hover:bg-orange-700 disabled:opacity-50 text-sm md:text-base"
+    >
+        {generatingDebt ? 'Generando...' : 'Generar Cuotas del Mes Siguiente'}
+    </button>
+    {debtMsg && <p className="text-center text-xs md:text-sm font-medium mt-3 animate-pulse">{debtMsg}</p>}
+</div>
         </div>
     );
 }
