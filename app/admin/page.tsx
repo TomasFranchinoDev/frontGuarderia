@@ -156,6 +156,9 @@ function SettingsView({ secret }: { secret: string }) {
     const [error, setError] = useState('');
     const [generatingDebt, setGeneratingDebt] = useState(false);
     const [debtMsg, setDebtMsg] = useState('');
+    const [clientsForMessages, setClientsForMessages] = useState<Client[]>([]);
+    const [clientsLoading, setClientsLoading] = useState(false);
+    const [clientsError, setClientsError] = useState('');
 
     // Cargar precio actual al montar
     useEffect(() => {
@@ -185,6 +188,39 @@ function SettingsView({ secret }: { secret: string }) {
         loadFee();
     }, [secret]);
 
+    useEffect(() => {
+        const loadClientsForMessages = async () => {
+            setClientsLoading(true);
+            setClientsError('');
+            try {
+                const res = await fetch(`${API_URL}/admin/clients`, {
+                    headers: { 'x-admin-secret': secret }
+                });
+
+                if (!res.ok) {
+                    setClientsError('No pude cargar la lista de clientes');
+                    setClientsForMessages([]);
+                    return;
+                }
+
+                const data = await res.json();
+                setClientsForMessages(Array.isArray(data) ? data : []);
+            } catch (err) {
+                setClientsError('No pude cargar la lista de clientes');
+                setClientsForMessages([]);
+            } finally {
+                setClientsLoading(false);
+            }
+        };
+
+        loadClientsForMessages();
+    }, [secret]);
+
+    const buildWhatsAppLink = (client: Client) => {
+        const message = `Hola ${client.name} 👋, buen día.\nPodés ver tu saldo actualizado, los datos de la cuenta y planes de pago en el siguiente link:\n🔗 https://guarderialachueca.com/status/${client.phone}\n\nImportante:\n- Enviá el comprobante por este chat.\n- Si pagás en efectivo, escribime para coordinar.`;
+        return `https://wa.me/${client.phone}?text=${encodeURIComponent(message)}`;
+    };
+
     const handleUpdate = async () => {
         setError('');
         setLoading(true);
@@ -212,45 +248,41 @@ function SettingsView({ secret }: { secret: string }) {
         setLoading(false);
     };
 
-    // Reemplaza estas dos funciones:
-// - handleGenerateMonthlyDebt
-// - handleGenerateNextMonthDebt
+    // Con esta nueva función unificada:
+    const handleGenerateDebt = async (isNextMonth: boolean = false) => {
+        setDebtMsg('');
+        const monthText = isNextMonth ? 'del mes siguiente' : 'del mes actual';
+        const ok = window.confirm(`¿Generar cuotas mensuales para todos los clientes activos ${monthText}?`);
+        if (!ok) return;
 
-// Con esta nueva función unificada:
-const handleGenerateDebt = async (isNextMonth: boolean = false) => {
-    setDebtMsg('');
-    const monthText = isNextMonth ? 'del mes siguiente' : 'del mes actual';
-    const ok = window.confirm(`¿Generar cuotas mensuales para todos los clientes activos ${monthText}?`);
-    if (!ok) return;
+        setGeneratingDebt(true);
+        try {
+            const params = new URLSearchParams();
+            if (isNextMonth) {
+                params.append('next_month', 'true');
+            }
 
-    setGeneratingDebt(true);
-    try {
-        const params = new URLSearchParams();
-        if (isNextMonth) {
-            params.append('next_month', 'true');
+            const url = new URL(`${API_URL}/webhook/generate-monthly-debt`);
+            url.search = params.toString();
+
+            const res = await fetch(url.toString(), {
+                method: 'POST',
+                headers: { 'x-webhook-secret': secret }
+            });
+
+            if (!res.ok) {
+                setDebtMsg('❌ Error al generar deudas');
+                setGeneratingDebt(false);
+                return;
+            }
+
+            const data = await res.json();
+            setDebtMsg(`✅ ${data.message}. Periodo: ${data.period}. Pagos creados: ${data.payments_created}`);
+        } catch (e) {
+            setDebtMsg('❌ Error de conexión al generar deudas');
         }
-
-        const url = new URL(`${API_URL}/webhook/generate-monthly-debt`);
-        url.search = params.toString();
-
-        const res = await fetch(url.toString(), {
-            method: 'POST',
-            headers: { 'x-webhook-secret': secret }
-        });
-
-        if (!res.ok) {
-            setDebtMsg('❌ Error al generar deudas');
-            setGeneratingDebt(false);
-            return;
-        }
-
-        const data = await res.json();
-        setDebtMsg(`✅ ${data.message}. Periodo: ${data.period}. Pagos creados: ${data.payments_created}`);
-    } catch (e) {
-        setDebtMsg('❌ Error de conexión al generar deudas');
-    }
-    setGeneratingDebt(false);
-};
+        setGeneratingDebt(false);
+    };
 
     return (
         <div className="space-y-4 md:space-y-6 max-w-full md:max-w-md md:mx-auto">
@@ -288,44 +320,99 @@ const handleGenerateDebt = async (isNextMonth: boolean = false) => {
             </div>
 
             {/* Sección de Generar Deudas Mensuales - Mes Actual */}
-<div className="bg-white rounded-xl shadow p-4 md:p-6">
-    <h3 className="text-base md:text-lg font-bold text-gray-800 mb-3 md:mb-4 flex items-center gap-2">
-        <DollarSign className="text-orange-600" size={20} />
-        Generar Deudas del Mes Actual
-    </h3>
-    <p className="text-xs md:text-sm text-gray-500 mb-3 md:mb-4">
-        Crea automáticamente las cuotas del mes actual para todos los clientes activos.
-    </p>
+            <div className="bg-white rounded-xl shadow p-4 md:p-6">
+                <h3 className="text-base md:text-lg font-bold text-gray-800 mb-3 md:mb-4 flex items-center gap-2">
+                    <DollarSign className="text-orange-600" size={20} />
+                    Generar Deudas del Mes Actual
+                </h3>
+                <p className="text-xs md:text-sm text-gray-500 mb-3 md:mb-4">
+                    Crea automáticamente las cuotas del mes actual para todos los clientes activos.
+                </p>
 
-    <button
-        onClick={() => handleGenerateDebt(false)}
-        disabled={generatingDebt}
-        className="w-full bg-orange-600 text-white font-bold py-2 md:py-3 rounded-lg hover:bg-orange-700 disabled:opacity-50 text-sm md:text-base"
-    >
-        {generatingDebt ? 'Generando...' : 'Generar Cuotas del Mes Actual'}
-    </button>
-    {debtMsg && <p className="text-center text-xs md:text-sm font-medium mt-3 animate-pulse">{debtMsg}</p>}
-</div>
+                <button
+                    onClick={() => handleGenerateDebt(false)}
+                    disabled={generatingDebt}
+                    className="w-full bg-orange-600 text-white font-bold py-2 md:py-3 rounded-lg hover:bg-orange-700 disabled:opacity-50 text-sm md:text-base"
+                >
+                    {generatingDebt ? 'Generando...' : 'Generar Cuotas del Mes Actual'}
+                </button>
+                {debtMsg && <p className="text-center text-xs md:text-sm font-medium mt-3 animate-pulse">{debtMsg}</p>}
+            </div>
 
-{/* Sección de Generar Deudas Mensuales - Mes Siguiente */}
-<div className="bg-white rounded-xl shadow p-4 md:p-6">
-    <h3 className="text-base md:text-lg font-bold text-gray-800 mb-3 md:mb-4 flex items-center gap-2">
-        <DollarSign className="text-orange-600" size={20} />
-        Generar Deudas del Mes Siguiente
-    </h3>
-    <p className="text-xs md:text-sm text-gray-500 mb-3 md:mb-4">
-        Crea automáticamente las cuotas del próximo mes para todos los clientes activos.
-    </p>
+            {/* Sección de Generar Deudas Mensuales - Mes Siguiente */}
+            <div className="bg-white rounded-xl shadow p-4 md:p-6">
+                <h3 className="text-base md:text-lg font-bold text-gray-800 mb-3 md:mb-4 flex items-center gap-2">
+                    <DollarSign className="text-orange-600" size={20} />
+                    Generar Deudas del Mes Siguiente
+                </h3>
+                <p className="text-xs md:text-sm text-gray-500 mb-3 md:mb-4">
+                    Crea automáticamente las cuotas del próximo mes para todos los clientes activos.
+                </p>
 
-    <button
-        onClick={() => handleGenerateDebt(true)}
-        disabled={generatingDebt}
-        className="w-full bg-orange-600 text-white font-bold py-2 md:py-3 rounded-lg hover:bg-orange-700 disabled:opacity-50 text-sm md:text-base"
-    >
-        {generatingDebt ? 'Generando...' : 'Generar Cuotas del Mes Siguiente'}
-    </button>
-    {debtMsg && <p className="text-center text-xs md:text-sm font-medium mt-3 animate-pulse">{debtMsg}</p>}
-</div>
+                <button
+                    onClick={() => handleGenerateDebt(true)}
+                    disabled={generatingDebt}
+                    className="w-full bg-orange-600 text-white font-bold py-2 md:py-3 rounded-lg hover:bg-orange-700 disabled:opacity-50 text-sm md:text-base"
+                >
+                    {generatingDebt ? 'Generando...' : 'Generar Cuotas del Mes Siguiente'}
+                </button>
+                {debtMsg && <p className="text-center text-xs md:text-sm font-medium mt-3 animate-pulse">{debtMsg}</p>}
+            </div>
+
+            <div>
+                {/* Sección de mensajes personalizados para mis clientes */}
+                <div className="bg-white rounded-xl shadow p-4 md:p-6">
+                    <h3 className="text-base md:text-lg font-bold text-gray-800 mb-3 md:mb-4 flex items-center gap-2">
+                        <Settings className="text-gray-600" size={20} />
+                        Mensajes Personalizados para Clientes
+                    </h3>
+                    <p className="text-xs md:text-sm text-gray-500 mb-3 md:mb-4">
+                        Links de WhatsApp con marca de deuda por cliente
+                    </p>
+                    <div className="text-sm md:text-base text-gray-700 space-y-3">
+                        <p className="text-xs md:text-sm text-gray-600">
+                            Marca rápida: ⚠️ Debe este mes | ✅ No debe
+                        </p>
+                        {clientsLoading && <p className="text-sm text-gray-500">Cargando clientes...</p>}
+                        {clientsError && <p className="text-sm text-red-600">{clientsError}</p>}
+                        {!clientsLoading && !clientsError && clientsForMessages.length === 0 && (
+                            <p className="text-sm text-gray-500">No hay clientes cargados.</p>
+                        )}
+                        {!clientsLoading && !clientsError && clientsForMessages.length > 0 && (
+                            <p className="text-xs md:text-sm text-gray-600">Total: {clientsForMessages.length}</p>
+                        )}
+                        {!clientsLoading && !clientsError && clientsForMessages.map(client => {
+                            const hasDebt = client.current_debt > 0;
+                            return (
+                                <div key={client.id} className="border rounded-lg p-3 md:p-4 space-y-2">
+                                    <div className="flex items-center justify-between gap-3">
+                                        <div>
+                                            <p className="font-semibold text-gray-800">{client.name}</p>
+                                            <p className="text-xs md:text-sm text-gray-500">{client.phone}</p>
+                                        </div>
+                                        <span className={`text-xs font-bold px-2 py-1 rounded ${hasDebt ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                                            {hasDebt ? '⚠️ Debe' : '✅ No debe'}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center justify-between gap-3 text-xs md:text-sm text-gray-700">
+                                        <span className="font-medium">Deuda: ${client.current_debt.toLocaleString()}</span>
+                                        <a
+                                            className="text-purple-600 underline font-semibold"
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            href={buildWhatsAppLink(client)}
+                                        >
+                                            Enviar
+                                        </a>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                </div>
+
+            </div>
         </div>
     );
 }

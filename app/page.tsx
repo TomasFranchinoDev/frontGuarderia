@@ -52,10 +52,10 @@ export default function Home() {
                 <Image
                   src="/image-sin-fondo.webp"
                   alt="Identidad visual de la guardería"
-                  width={240}
-                  height={240}
-                  sizes="(max-width: 768px) 60vw, 240px"
-                  className="h-60 w-60 object-contain"
+                  width={320}
+                  height={320}
+                  sizes="(max-width: 860px) 70vw, 320px"
+                  className="h-70 w-70 object-contain"
                 />
               </div>
 
