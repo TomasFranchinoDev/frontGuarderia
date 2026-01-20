@@ -79,7 +79,7 @@ export default function AdminPage() {
                     <div className="flex justify-center mb-4 text-blue-600">
                         <Lock size={48} />
                     </div>
-                    <h2 className="text-2xl font-bold text-center mb-6 text-gray-800">Panel Administrador</h2>
+                    <h2 className="text-2xl font-bold text-center mb-6">Panel Administrador</h2>
                     <input
                         type="password"
                         value={secret}
@@ -100,7 +100,7 @@ export default function AdminPage() {
         <div className="min-h-screen bg-gray-50 flex flex-col">
             {/* Header Admin */}
             <header className="bg-white border-b border-gray-200 px-4 py-3 md:px-6 md:py-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 sticky top-0 z-10">
-                <div className="flex items-center gap-2 font-bold text-lg md:text-xl text-gray-800">
+                <div className="flex items-center gap-2 font-bold text-lg md:text-xl">
                     <span>🛡️ Panel Administrador</span>
                 </div>
                 <button
