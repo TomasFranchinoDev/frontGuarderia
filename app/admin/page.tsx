@@ -217,7 +217,7 @@ function SettingsView({ secret }: { secret: string }) {
     }, [secret]);
 
     const buildWhatsAppLink = (client: Client) => {
-        const message = `Hola ${client.name} 👋, buen día.\nTe escribo para recordarte que el 10 vence el plazo para abonar tu cuota de la guarderia con descuento. \nPodés ver tu saldo actualizado, los datos de la cuenta y planes de pago en el siguiente link:\n🔗 https://guarderialachueca.com/status/${client.phone} \nImportante:\n- En caso de transferir enviá el comprobante por este chat.\n- Si pagás en efectivo, escribime para coordinar.`;
+        const message = `Hola ${client.name.split(" ")[0]} 👋, buen día.\nTe escribo para recordarte que el 10 vence el plazo para abonar tu cuota de la guarderia con descuento 🚤. \nPodés ver tu saldo actualizado, los datos de la cuenta y planes de pago en el siguiente link:\n🔗https://guarderialachueca.com/status/${client.phone} \n👉Importante:\n- En caso de transferir enviá el comprobante por este chat.\n- Si pagás en efectivo, escribime para coordinar.`;
         return `https://wa.me/${client.phone}?text=${encodeURIComponent(message)}`;
     };
 
@@ -370,9 +370,6 @@ function SettingsView({ secret }: { secret: string }) {
                         Links de WhatsApp con marca de deuda por cliente
                     </p>
                     <div className="text-sm md:text-base text-gray-700 space-y-3">
-                        <p className="text-xs md:text-sm text-gray-600">
-                            Marca rápida: ⚠️ Debe este mes | ✅ No debe
-                        </p>
                         {clientsLoading && <p className="text-sm text-gray-500">Cargando clientes...</p>}
                         {clientsError && <p className="text-sm text-red-600">{clientsError}</p>}
                         {!clientsLoading && !clientsError && clientsForMessages.length === 0 && (
