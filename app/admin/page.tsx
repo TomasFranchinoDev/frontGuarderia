@@ -217,7 +217,7 @@ function SettingsView({ secret }: { secret: string }) {
     }, [secret]);
 
     const buildWhatsAppLink = (client: Client) => {
-        const message = `Hola ${client.name} 👋, buen día.\nPodés ver tu saldo actualizado, los datos de la cuenta y planes de pago en el siguiente link:\n🔗 https://guarderialachueca.com/status/${client.phone}\n\nImportante:\n- Enviá el comprobante por este chat.\n- Si pagás en efectivo, escribime para coordinar.`;
+        const message = `Hola ${client.name} 👋, buen día.\nTe escribo para recordarte que el 10 vence el plazo para abonar tu cuota de la guarderia con descuento. \nPodés ver tu saldo actualizado, los datos de la cuenta y planes de pago en el siguiente link:\n🔗 https://guarderialachueca.com/status/${client.phone} \nImportante:\n- En caso de transferir enviá el comprobante por este chat.\n- Si pagás en efectivo, escribime para coordinar.`;
         return `https://wa.me/${client.phone}?text=${encodeURIComponent(message)}`;
     };
 
