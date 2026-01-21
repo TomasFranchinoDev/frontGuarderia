@@ -175,9 +175,9 @@ export default function WaitingListSection() {
                                     className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all outline-none bg-white"
                                 >
                                     <option value="">Selecciona un tamaño</option>
-                                    <option value="4x4">Pequeño</option>
-                                    <option value="5x5">Mediano</option>
-                                    <option value="6x6">Grande</option>
+                                    <option value="Pequeño">Pequeño</option>
+                                    <option value="Mediano">Mediano</option>
+                                    <option value="Grande">Grande</option>
                                 </select>
                             </div>
 
