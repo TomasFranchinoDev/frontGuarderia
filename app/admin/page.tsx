@@ -664,6 +664,8 @@ function ClientsView({ secret }: { secret: string }) {
 // COMPONENTE MODAL: GESTIÓN AVANZADA DE PAGOS
 // ==========================================
 function ClientDetailModal({ client, secret, onClose, onRefresh }: { client: Client, secret: string, onClose: () => void, onRefresh: () => void }) {
+    // Estado local para los pagos que se actualiza al crear/editar/eliminar
+    const [localPayments, setLocalPayments] = useState<Payment[]>(client.payments);
 
     // Función para editar un pago individual (Parcial o Total)
     const handleUpdatePayment = async (paymentId: string, newAmount: number, newStatus: string, newMethod: string | null) => {
@@ -679,6 +681,8 @@ function ClientDetailModal({ client, secret, onClose, onRefresh }: { client: Cli
             });
             if (res.ok) {
                 alert("Pago actualizado correctamente");
+                // Actualizar localmente
+                setLocalPayments(prev => prev.map(p => p.id === paymentId ? { ...p, amount: newAmount, status: newStatus as 'PENDING' | 'PAID', method: newMethod } : p));
                 onRefresh();
             } else {
                 alert("Error al actualizar");
@@ -701,30 +705,18 @@ function ClientDetailModal({ client, secret, onClose, onRefresh }: { client: Cli
                 alert(text || 'No se pudo eliminar el pago');
                 return;
             }
+            // Actualizar localmente
+            setLocalPayments(prev => prev.filter(p => p.id !== paymentId));
             onRefresh();
         } catch (e) {
             alert('Error de red al eliminar pago');
         }
     };
 
-    const handleCreatePayment = async (payload: { amount: number; status: string; method?: string | null; month_period: string; client_id: string; }) => {
-        try {
-            const res = await fetch(`${API_URL}/admin/payments`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'x-admin-secret': secret },
-                body: JSON.stringify(payload)
-            });
-            if (!res.ok) {
-                const text = await res.text();
-                alert(text || 'No se pudo crear el pago');
-                return false;
-            }
-            onRefresh();
-            return true;
-        } catch (e) {
-            alert('Error de red al crear pago');
-            return false;
-        }
+    const handleCreatePayment = async (newPayment: Payment) => {
+        // Agregar el nuevo pago a la lista local inmediatamente
+        setLocalPayments(prev => [...prev, newPayment]);
+        onRefresh();
     };
 
     const [showCreatePayment, setShowCreatePayment] = useState(false);
@@ -755,7 +747,7 @@ function ClientDetailModal({ client, secret, onClose, onRefresh }: { client: Cli
                         </button>
                     </div>
 
-                    {client.payments.map((payment) => (
+                    {localPayments.map((payment) => (
                         <PaymentRow
                             key={payment.id}
                             payment={payment}
@@ -764,7 +756,7 @@ function ClientDetailModal({ client, secret, onClose, onRefresh }: { client: Cli
                         />
                     ))}
 
-                    {client.payments.length === 0 && <p className="text-gray-400 italic text-sm md:text-base">Este cliente no tiene historial de pagos.</p>}
+                    {localPayments.length === 0 && <p className="text-gray-400 italic text-sm md:text-base">Este cliente no tiene historial de pagos.</p>}
                 </div>
                 {/* MODAL CREAR PAGO */}
                 {showCreatePayment && (
@@ -772,9 +764,9 @@ function ClientDetailModal({ client, secret, onClose, onRefresh }: { client: Cli
                         clientId={client.id}
                         secret={secret}
                         onClose={() => setShowCreatePayment(false)}
-                        onCreated={() => {
+                        onPaymentCreated={(newPayment) => {
                             setShowCreatePayment(false);
-                            onRefresh();
+                            handleCreatePayment(newPayment);
                         }}
                     />
                 )}
@@ -1103,7 +1095,7 @@ function EditClientModal({ secret, client, onClose, onUpdated }: { secret: strin
 }
 
 // Modal para crear pago manual
-function CreatePaymentModal({ clientId, secret, onClose, onCreated }: { clientId: string, secret: string, onClose: () => void, onCreated: () => void }) {
+function CreatePaymentModal({ clientId, secret, onClose, onPaymentCreated }: { clientId: string, secret: string, onClose: () => void, onPaymentCreated: (payment: Payment) => void }) {
     const [amount, setAmount] = useState<number | ''>('');
     const [monthPeriod, setMonthPeriod] = useState('');
     const [status, setStatus] = useState<'PENDING' | 'PAID'>('PENDING');
@@ -1113,8 +1105,8 @@ function CreatePaymentModal({ clientId, secret, onClose, onCreated }: { clientId
 
     const handleSave = async () => {
         setError('');
-        if (amount === '' || Number(amount) <= 0 || !monthPeriod) {
-            setError('Ingresa un monto > 0 y una fecha (YYYY-MM-DD)');
+        if (amount === '' || Number(amount) < 0 || !monthPeriod) {
+            setError('Ingresa un monto positivo y una fecha (YYYY-MM-DD)');
             return;
         }
         setSaving(true);
@@ -1136,9 +1128,18 @@ function CreatePaymentModal({ clientId, secret, onClose, onCreated }: { clientId
                 setSaving(false);
                 return;
             }
-            onCreated();
+            const responseData = await res.json();
+            // Crear el objeto de pago con el ID retornado por el servidor
+            const newPayment: Payment = {
+                id: responseData.id || `temp-${Date.now()}`,
+                amount: Number(amount),
+                month_period: monthPeriod,
+                status: status as 'PENDING' | 'PAID',
+                method: method || null
+            };
+            onPaymentCreated(newPayment);
         } catch (e) {
-            setError('Error de red al crear pago');
+            setError('Error de red al crear pago o pago ya creado');
             setSaving(false);
         }
     };
