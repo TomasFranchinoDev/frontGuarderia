@@ -788,7 +788,7 @@ function ClientDetailModal({ client, secret, onClose, onRefresh }: { client: Cli
                         </button>
                     </div>
                     
-                    {client.charges.map((charge) => (
+                    {[...client.charges].sort((a, b) => new Date(b.month_period).getTime() - new Date(a.month_period).getTime()).map((charge) => (
                         <ChargeRow
                             key={charge.id}
                             charge={charge}

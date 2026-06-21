@@ -63,7 +63,9 @@ export default function Home() {
 
   // --- CÁLCULOS ---
   const hasDebt = clientData && clientData.current_debt > 0;
-  const pendingPayments = clientData?.charges?.filter(p => p.status === 'PENDING' || p.status === 'PARTIAL') ?? [];
+  const pendingPayments = [...(clientData?.charges ?? [])]
+    .filter(p => p.status === 'PENDING' || p.status === 'PARTIAL')
+    .sort((a, b) => new Date(b.month_period).getTime() - new Date(a.month_period).getTime());
   // El subtotal ya no es necesario aquí
 
   // --- RENDERIZADO ---
