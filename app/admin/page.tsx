@@ -5,7 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import {
     Lock, Settings, Users, Search, Plus,
-    Trash2, Edit2, Check, X, DollarSign, Save, Clock, RefreshCw, ArrowLeft, BarChart3, TrendingUp, AlertTriangle, CreditCard, MessageCircle
+    Trash2, Edit2, Check, X, DollarSign, Save, Clock, RefreshCw, ArrowLeft, BarChart3, TrendingUp, AlertTriangle, CreditCard, MessageCircle, Home, CheckCircle, ListOrdered, Target, Activity
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
@@ -47,12 +47,23 @@ type WaitlistEntry = {
     created_at?: string | null;
 };
 
+type OccupancyStats = {
+    occupancy_rate: number;
+    available_boxes: number;
+    occupied_boxes: number;
+    total_rentable_boxes: number;
+    potential_revenue: number;
+    waitlist_count: number;
+    top_waitlist: {name: string, phone: string, box_size: string}[];
+};
+
 type DashboardStats = {
     current_month: { invoiced: number, paid: number, cash: number, transfer: number },
     last_year: { invoiced: number, paid: number, cash: number, transfer: number },
     total_debt: number,
     top_debtors: { name: string, phone: string, debt: number }[],
-    history: { month: string, revenue: number }[]
+    history: { month: string, revenue: number }[],
+    occupancy: OccupancyStats
 };
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
@@ -1280,6 +1291,93 @@ function CreateTransactionModal({ chargeId, secret, onClose, onCreated }: { char
     );
 }
 
+// Modal para crear una nueva entrada en lista de espera
+function CreateWaitlistModal({ secret, onClose, onCreated }: { secret: string, onClose: () => void, onCreated: () => void }) {
+    const [name, setName] = useState('');
+    const [email, setEmail] = useState('');
+    const [phone, setPhone] = useState('');
+    const [boxSize, setBoxSize] = useState('');
+    const [message, setMessage] = useState('');
+    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState('');
+
+    const handleSave = async () => {
+        setError('');
+        if (!name.trim() || !phone.trim() || !boxSize.trim() || !email.trim()) {
+            setError('Completa nombre, email, teléfono y tamaño de box');
+            return;
+        }
+        setSaving(true);
+        try {
+            const res = await fetch(`${API_URL}/waiting-list`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'x-admin-secret': secret },
+                body: JSON.stringify({
+                    name: name.trim(),
+                    email: email.trim(),
+                    phone: phone.trim(),
+                    box_type: boxSize.trim(),
+                    message: message.trim()
+                })
+            });
+            if (!res.ok) {
+                const text = await res.text();
+                setError(text || 'No se pudo crear la entrada');
+                setSaving(false);
+                return;
+            }
+            onCreated();
+        } catch (e) {
+            setError('Error de red al crear entrada');
+            setSaving(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4 overflow-y-auto">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-md my-4">
+                <div className="bg-gray-100 px-4 md:px-6 py-3 md:py-4 border-b flex justify-between items-center">
+                    <h3 className="font-bold text-gray-800 text-base md:text-lg">Nueva Entrada a Espera</h3>
+                    <button onClick={onClose} className="p-2 hover:bg-gray-200 rounded-full">
+                        <X size={18} />
+                    </button>
+                </div>
+                <div className="p-4 md:p-6 space-y-3 md:space-y-4">
+                    <div>
+                        <label className="text-xs md:text-sm text-gray-600 block mb-1">Nombre</label>
+                        <input type="text" value={name} onChange={e => setName(e.target.value)} className="w-full px-3 py-2 border rounded text-sm md:text-base outline-none focus:ring-2 focus:ring-blue-500" />
+                    </div>
+                    <div>
+                        <label className="text-xs md:text-sm text-gray-600 block mb-1">Email</label>
+                        <input type="email" value={email} onChange={e => setEmail(e.target.value)} className="w-full px-3 py-2 border rounded text-sm md:text-base outline-none focus:ring-2 focus:ring-blue-500" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="text-xs md:text-sm text-gray-600 block mb-1">Teléfono</label>
+                            <input type="text" value={phone} onChange={e => setPhone(e.target.value)} className="w-full px-3 py-2 border rounded text-sm md:text-base outline-none focus:ring-2 focus:ring-blue-500" />
+                        </div>
+                        <div>
+                            <label className="text-xs md:text-sm text-gray-600 block mb-1">Box Solicitado</label>
+                            <input type="text" value={boxSize} onChange={e => setBoxSize(e.target.value)} className="w-full px-3 py-2 border rounded text-sm md:text-base outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ej. L, M, S" />
+                        </div>
+                    </div>
+                    <div>
+                        <label className="text-xs md:text-sm text-gray-600 block mb-1">Mensaje (opcional)</label>
+                        <textarea value={message} onChange={e => setMessage(e.target.value)} className="w-full px-3 py-2 border rounded text-sm md:text-base outline-none focus:ring-2 focus:ring-blue-500" rows={2} />
+                    </div>
+                    {error && <p className="text-xs md:text-sm text-red-600 bg-red-50 p-2 rounded">{error}</p>}
+                    <div className="flex justify-end gap-2 pt-2">
+                        <button onClick={onClose} className="px-3 py-2 border rounded text-sm md:text-base hover:bg-gray-50 transition">Cancelar</button>
+                        <button onClick={handleSave} disabled={saving} className="px-3 py-2 rounded bg-green-600 text-white disabled:opacity-50 text-sm md:text-base hover:bg-green-700 transition">
+                            {saving ? 'Guardando...' : 'Crear'}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 // ==========================================
 // VISTA 3: LISTA DE ESPERA (WAITLIST)
 // ==========================================
@@ -1289,6 +1387,7 @@ function WaitlistView({ secret }: { secret: string }) {
     const [listMsg, setListMsg] = useState('');
     const [deletingId, setDeletingId] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
+    const [showCreate, setShowCreate] = useState(false);
 
     const fetchWaitlist = async () => {
         setLoading(true);
@@ -1377,6 +1476,11 @@ function WaitlistView({ secret }: { secret: string }) {
         }
     };
 
+    const buildWaitlistWhatsAppLink = (entry: WaitlistEntry) => {
+        const message = `Hola ${entry.name.split(" ")[0]} 👋, buen día.\nTe escribo de Guardería La Chueca 🚤. \nTe contactamos porque se nos ha liberado un box tamaño ${entry.box_size} y vimos que estabas en nuestra lista de espera.\nSi seguís interesado/a, confirmame por este medio así coordinamos. ¡Saludos!`;
+        return `https://wa.me/${entry.phone.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
+    };
+
     return (
         <div>
             {/* Barra de Herramientas */}
@@ -1391,13 +1495,21 @@ function WaitlistView({ secret }: { secret: string }) {
                         className="w-full pl-10 pr-3 md:pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm md:text-base"
                     />
                 </div>
-                <button
-                    onClick={fetchWaitlist}
-                    disabled={loading}
-                    className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2 hover:bg-blue-700 disabled:opacity-50 text-sm md:text-base"
-                >
-                    <RefreshCw size={18} className={loading ? 'animate-spin' : ''} /> Refrescar
-                </button>
+                <div className="flex flex-col sm:flex-row gap-3">
+                    <button
+                        onClick={fetchWaitlist}
+                        disabled={loading}
+                        className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg flex items-center justify-center gap-2 hover:bg-gray-200 disabled:opacity-50 text-sm md:text-base transition"
+                    >
+                        <RefreshCw size={18} className={loading ? 'animate-spin' : ''} /> Refrescar
+                    </button>
+                    <button
+                        onClick={() => setShowCreate(true)}
+                        className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2 hover:bg-blue-700 text-sm md:text-base shadow-sm transition"
+                    >
+                        <Plus size={18} /> Nuevo Registro
+                    </button>
+                </div>
             </div>
 
             {/* Tabla de Espera - Desktop */}
@@ -1431,7 +1543,16 @@ function WaitlistView({ secret }: { secret: string }) {
                                 <td className="px-6 py-4 text-gray-600 text-sm">
                                     {formatDate(entry.created_at)}
                                 </td>
-                                <td className="px-6 py-4 flex justify-center">
+                                <td className="px-6 py-4 flex justify-center gap-3">
+                                    <a 
+                                        href={buildWaitlistWhatsAppLink(entry)}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="text-green-600 hover:text-green-800 text-sm font-medium flex items-center gap-1 transition-colors"
+                                        title="Avisar disponibilidad por WhatsApp"
+                                    >
+                                        <MessageCircle size={16} /> Avisar
+                                    </a>
                                     <button
                                         onClick={() => handleDeleteEntry(entry)}
                                         disabled={deletingId === entry.id}
@@ -1485,13 +1606,23 @@ function WaitlistView({ secret }: { secret: string }) {
                             </div>
                         </div>
 
-                        <button
-                            onClick={() => handleDeleteEntry(entry)}
-                            disabled={deletingId === entry.id}
-                            className="w-full bg-red-50 text-red-600 py-2 px-3 rounded-lg text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50"
-                        >
-                            <Trash2 size={16} /> {deletingId === entry.id ? 'Eliminando...' : 'Eliminar'}
-                        </button>
+                        <div className="flex gap-2 mt-2">
+                            <a 
+                                href={buildWaitlistWhatsAppLink(entry)}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="flex-1 bg-green-50 text-green-600 py-2 px-3 rounded-lg text-sm font-medium flex items-center justify-center gap-2 hover:bg-green-100 transition-colors"
+                            >
+                                <MessageCircle size={16} /> Avisar
+                            </a>
+                            <button
+                                onClick={() => handleDeleteEntry(entry)}
+                                disabled={deletingId === entry.id}
+                                className="flex-1 bg-red-50 text-red-600 py-2 px-3 rounded-lg text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50 hover:bg-red-100 transition-colors"
+                            >
+                                <Trash2 size={16} /> {deletingId === entry.id ? 'Eliminando...' : 'Eliminar'}
+                            </button>
+                        </div>
                     </div>
                 ))}
                 {filteredWaitlist.length === 0 && (
@@ -1500,6 +1631,17 @@ function WaitlistView({ secret }: { secret: string }) {
                     </div>
                 )}
             </div>
+
+            {showCreate && (
+                <CreateWaitlistModal 
+                    secret={secret}
+                    onClose={() => setShowCreate(false)}
+                    onCreated={() => {
+                        setShowCreate(false);
+                        fetchWaitlist();
+                    }}
+                />
+            )}
         </div>
     );
 }
@@ -1545,6 +1687,11 @@ function DashboardView({ secret }: { secret: string }) {
     const buildDebtorWhatsAppLink = (debtor: {name: string, phone: string}) => {
         const message = `Hola ${debtor.name.split(" ")[0]} 👋, buen día.\nTe escribo para recordarte que el 10 vence el plazo para abonar tu cuota de la guarderia con descuento 🚤. \nPodés ver tu saldo actualizado, los datos de la cuenta y planes de pago en el siguiente link:\n🔗https://guarderialachueca.com/status/${debtor.phone} \n👉Importante:\n- En caso de transferir enviá el comprobante por este chat.\n- Si pagás en efectivo, escribime para coordinar.`;
         return `https://wa.me/${debtor.phone.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
+    };
+
+    const buildDashboardWaitlistWhatsAppLink = (candidate: {name: string, phone: string, box_size: string}) => {
+        const message = `Hola ${candidate.name.split(" ")[0]} 👋, buen día.\nTe escribo de Guardería La Chueca 🚤. \nTe contactamos porque se nos ha liberado un box tamaño ${candidate.box_size} y vimos que estabas en nuestra lista de espera.\nSi seguís interesado/a, confirmame por este medio así coordinamos. ¡Saludos!`;
+        return `https://wa.me/${candidate.phone.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
     };
 
     return (
@@ -1606,6 +1753,89 @@ function DashboardView({ secret }: { secret: string }) {
                         <p className="text-gray-500 font-medium">Por Transferencia</p>
                     </div>
                     <h3 className="text-2xl font-bold text-gray-900">{formatMoney(activeStats.transfer)}</h3>
+                </div>
+            </div>
+
+            {/* Métricas Operativas y Capacidad */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
+                {/* Ocupación Actual */}
+                <div className="bg-white rounded-xl p-6 shadow border border-gray-200">
+                    <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2 text-gray-800 font-bold">
+                            <Home className="text-blue-600" size={20} />
+                            Ocupación Actual
+                        </div>
+                        <span className="text-2xl font-black text-gray-900">{stats.occupancy.occupancy_rate}%</span>
+                    </div>
+                    <div className="w-full bg-gray-100 rounded-full h-2.5">
+                        <div className="bg-blue-600 h-2.5 rounded-full transition-all duration-500" style={{ width: `${stats.occupancy.occupancy_rate}%` }}></div>
+                    </div>
+                </div>
+
+                {/* Boxes Disponibles */}
+                <div className="bg-white rounded-xl p-6 shadow border border-gray-200">
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className="p-2 bg-emerald-100 text-emerald-600 rounded-lg">
+                            <CheckCircle size={20} />
+                        </div>
+                        <p className="text-gray-500 font-medium">Boxes Disponibles</p>
+                    </div>
+                    <h3 className="text-2xl font-bold text-gray-900">
+                        {stats.occupancy.available_boxes} <span className="text-sm font-medium text-gray-500">/ {stats.occupancy.total_rentable_boxes}</span>
+                    </h3>
+                </div>
+
+                {/* Potencial Mensual */}
+                <div className="bg-white rounded-xl p-6 shadow border border-gray-200">
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className="p-2 bg-amber-100 text-amber-600 rounded-lg">
+                            <Target size={20} />
+                        </div>
+                        <p className="text-gray-500 font-medium">Potencial Mensual</p>
+                    </div>
+                    <div className="flex items-end justify-between">
+                        <h3 className="text-2xl font-bold text-gray-900">{formatMoney(stats.occupancy.potential_revenue)}</h3>
+                    </div>
+                </div>
+
+                {/* Demanda / Lista de Espera */}
+                <div className="bg-white rounded-xl p-6 shadow border border-gray-200 flex flex-col">
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className="p-2 bg-purple-100 text-purple-600 rounded-lg">
+                            <ListOrdered size={20} />
+                        </div>
+                        <p className="text-gray-500 font-medium">Lista de Espera</p>
+                    </div>
+                    <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-2xl font-bold text-gray-900">{stats.occupancy.waitlist_count} <span className="text-sm font-medium text-gray-500">personas</span></h3>
+                        <span className={`text-xs font-bold px-2 py-1 rounded-full ${stats.occupancy.waitlist_count >= stats.occupancy.available_boxes && stats.occupancy.available_boxes > 0 ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                            {stats.occupancy.waitlist_count >= stats.occupancy.available_boxes && stats.occupancy.available_boxes > 0 ? 'Demanda Cubierta' : 'En Espera'}
+                        </span>
+                    </div>
+                    {stats.occupancy.available_boxes > 0 && stats.occupancy.top_waitlist?.length > 0 && (
+                        <div className="mt-auto pt-3 border-t border-gray-100">
+                            <p className="text-xs text-gray-500 font-medium mb-2">Contactar próximos candidatos:</p>
+                            <div className="space-y-2">
+                                {stats.occupancy.top_waitlist.map((candidate, idx) => (
+                                    <div key={idx} className="flex items-center justify-between bg-gray-50 p-2 rounded-lg border border-gray-100">
+                                        <div className="truncate pr-2">
+                                            <p className="text-sm font-semibold text-gray-800 truncate">{candidate.name}</p>
+                                            <p className="text-xs text-gray-500">Box: {candidate.box_size}</p>
+                                        </div>
+                                        <a 
+                                            href={buildDashboardWaitlistWhatsAppLink(candidate)}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="p-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition flex-shrink-0"
+                                            title="Avisar por WhatsApp"
+                                        >
+                                            <MessageCircle size={16} />
+                                        </a>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
 
