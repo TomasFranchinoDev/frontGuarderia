@@ -5,7 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import {
     Lock, Settings, Users, Search, Plus,
-    Trash2, Edit2, Check, X, DollarSign, Save, Clock, RefreshCw, ArrowLeft, BarChart3, TrendingUp, AlertTriangle, CreditCard
+    Trash2, Edit2, Check, X, DollarSign, Save, Clock, RefreshCw, ArrowLeft, BarChart3, TrendingUp, AlertTriangle, CreditCard, MessageCircle
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
@@ -1510,6 +1510,7 @@ function DashboardView({ secret }: { secret: string }) {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [timeRange, setTimeRange] = useState<'current_month' | 'last_year'>('current_month');
+    const [historyMonths, setHistoryMonths] = useState<6 | 12>(6);
 
     useEffect(() => {
         const fetchStats = async () => {
@@ -1536,6 +1537,15 @@ function DashboardView({ secret }: { secret: string }) {
 
     const activeStats = timeRange === 'current_month' ? stats.current_month : stats.last_year;
     const titleText = timeRange === 'current_month' ? 'Mes Actual' : 'Últimos 12 Meses';
+
+    const percentPaid = activeStats.invoiced > 0 
+        ? ((activeStats.paid / activeStats.invoiced) * 100).toFixed(1)
+        : '0.0';
+
+    const buildDebtorWhatsAppLink = (debtor: {name: string, phone: string}) => {
+        const message = `Hola ${debtor.name.split(" ")[0]} 👋, buen día.\nTe escribo para recordarte que el 10 vence el plazo para abonar tu cuota de la guarderia con descuento 🚤. \nPodés ver tu saldo actualizado, los datos de la cuenta y planes de pago en el siguiente link:\n🔗https://guarderialachueca.com/status/${debtor.phone} \n👉Importante:\n- En caso de transferir enviá el comprobante por este chat.\n- Si pagás en efectivo, escribime para coordinar.`;
+        return `https://wa.me/${debtor.phone.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
+    };
 
     return (
         <div className="space-y-6">
@@ -1571,7 +1581,10 @@ function DashboardView({ secret }: { secret: string }) {
                     <div className="absolute top-0 right-0 -mr-4 -mt-4 opacity-10">
                         <TrendingUp size={100} />
                     </div>
-                    <p className="text-blue-200 font-medium mb-1">Total Recaudado</p>
+                    <p className="text-blue-200 font-medium mb-1">
+                        Total Recaudado
+                        <span className="ml-2 text-xs font-bold bg-blue-700 text-blue-100 px-2 py-0.5 rounded-full">{percentPaid}%</span>
+                    </p>
                     <h3 className="text-3xl font-bold">{formatMoney(activeStats.paid)}</h3>
                 </div>
 
@@ -1600,13 +1613,23 @@ function DashboardView({ secret }: { secret: string }) {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">
                 {/* Gráfico */}
                 <div className="lg:col-span-2 bg-white rounded-xl shadow border border-gray-200 p-6">
-                    <h3 className="text-lg font-bold text-gray-800 mb-6 flex items-center gap-2">
-                        <BarChart3 className="text-blue-600" />
-                        Evolución de Ingresos (Últimos 6 meses)
-                    </h3>
+                    <div className="flex justify-between items-center mb-6">
+                        <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                            <BarChart3 className="text-blue-600" />
+                            Evolución de Ingresos
+                        </h3>
+                        <select 
+                            value={historyMonths} 
+                            onChange={(e) => setHistoryMonths(Number(e.target.value) as 6 | 12)}
+                            className="text-sm border border-gray-200 rounded-md px-2 py-1 outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                            <option value={6}>Últimos 6 meses</option>
+                            <option value={12}>Últimos 12 meses</option>
+                        </select>
+                    </div>
                     <div className="h-[300px] w-full">
                         <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={stats.history.slice().reverse()}>
+                            <BarChart data={stats.history.slice(-historyMonths)}>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
                                 <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{fill: '#6B7280'}} />
                                 <YAxis 
@@ -1621,8 +1644,8 @@ function DashboardView({ secret }: { secret: string }) {
                                     contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                                 />
                                 <Bar dataKey="revenue" fill="#2563EB" radius={[4, 4, 0, 0]} barSize={40}>
-                                    {stats.history.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={index === 5 ? '#2563EB' : '#93C5FD'} />
+                                    {stats.history.slice(-historyMonths).map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={index === historyMonths - 1 ? '#2563EB' : '#93C5FD'} />
                                     ))}
                                 </Bar>
                             </BarChart>
@@ -1652,7 +1675,18 @@ function DashboardView({ secret }: { secret: string }) {
                                         <p className="font-semibold text-gray-800">{debtor.name}</p>
                                         <p className="text-xs text-gray-500">{debtor.phone}</p>
                                     </div>
-                                    <span className="font-bold text-red-600">{formatMoney(debtor.debt)}</span>
+                                    <div className="flex items-center gap-3">
+                                        <span className="font-bold text-red-600">{formatMoney(debtor.debt)}</span>
+                                        <a 
+                                            href={buildDebtorWhatsAppLink(debtor)}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="p-2 bg-green-50 text-green-600 rounded-full hover:bg-green-100 transition-colors"
+                                            title="Enviar WhatsApp"
+                                        >
+                                            <MessageCircle size={16} />
+                                        </a>
+                                    </div>
                                 </div>
                             ))
                         )}
