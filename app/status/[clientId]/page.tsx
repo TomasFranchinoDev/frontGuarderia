@@ -1,6 +1,6 @@
 'use client';
 import { useParams, useRouter } from 'next/navigation';
-import { useState, useEffect, use } from 'react';
+import { useState, useEffect } from 'react';
 import { ArrowLeft, ChevronDown, ChevronUp, Check, AlertCircle } from 'lucide-react';
 import { Footer } from '@/app/components/footer';
 import { Header } from '@/app/components/header';
@@ -37,7 +37,7 @@ export default function Home() {
         }
         const data = await response.json();
         setClientData(data);
-      } catch (err) {
+      } catch {
         setError('No pudimos encontrar tu usuario. Verificá el número.');
       } finally {
         setLoading(false);
@@ -63,9 +63,8 @@ export default function Home() {
 
   // --- CÁLCULOS ---
   const hasDebt = clientData && clientData.current_debt > 0;
-  const pendingPayments = clientData?.payments?.filter(p => p.status === 'PENDING') ?? [];
-  // Calculamos el subtotal puro sumando los montos
-  const subTotalAmount = pendingPayments.reduce((sum, p) => sum + (p.amount ?? 0), 0);
+  const pendingPayments = clientData?.charges?.filter(p => p.status === 'PENDING' || p.status === 'PARTIAL') ?? [];
+  // El subtotal ya no es necesario aquí
 
   // --- RENDERIZADO ---
 
@@ -140,7 +139,7 @@ export default function Home() {
                       const hasDiscount = clientData.has_discount_current_month && isCurrentMonth;
 
                       // Calculamos el precio con descuento (ajusta el 0.08 al porcentaje real que uses en el backend)
-                      const discountedPrice = p.amount * (1 - 0.08);
+                      const discountedPrice = p.total_amount * (1 - 0.08);
 
                       return (
                         <div key={p.id} className="flex justify-between items-center text-sm border-b border-gray-200 pb-2 last:border-0">
@@ -151,7 +150,7 @@ export default function Home() {
                               <>
                                 {/* 1. Precio Original: Gris y Tachado */}
                                 <span className="text-gray-400 line-through text-xs">
-                                  ${p.amount.toLocaleString("es-AR")}
+                                  ${p.total_amount.toLocaleString("es-AR")}
                                 </span>
 
                                 {/* 2. Precio con Descuento: Verde y Destacado */}
@@ -162,7 +161,7 @@ export default function Home() {
                             ) : (
                               /* Si no hay descuento, mostramos el precio normal en gris oscuro/negro */
                               <span className="font-semibold text-gray-900">
-                                ${p.amount.toLocaleString("es-AR")}
+                                ${p.total_amount.toLocaleString("es-AR")}
                               </span>
                             )}
                           </div>

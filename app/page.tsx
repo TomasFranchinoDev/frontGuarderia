@@ -9,7 +9,6 @@ import { Header } from './components/header';
 import HorariosCard from './components/horariosCard';
 import dynamic from 'next/dynamic';
 
-const ADMIN_WHATSAPP = '5493417508'; // Tu número
 const WaitingListSection = dynamic(() => import('./components/form'), {
   loading: () => <div className="min-h-screen" />,
   ssr: false,

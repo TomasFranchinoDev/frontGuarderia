@@ -1,5 +1,5 @@
 import React from 'react';
-import { MapPin, Phone, Mail } from 'lucide-react';
+// import { MapPin, Phone, Mail } from 'lucide-react';
 
 export default function LocationSection() {
     return (
@@ -13,6 +13,7 @@ export default function LocationSection() {
                     <div className="relative overflow-hidden rounded-2xl shadow-xl h-64 sm:h-80 md:h-96 group">
                         {/* Imagen */}
                         <div className="relative overflow-hidden rounded-2xl shadow-xl h-64 sm:h-80 md:h-96 group">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
                                 src="/guarderia-fondo.webp"
                                 alt="Nuestra oficina"
@@ -32,6 +33,7 @@ export default function LocationSection() {
                     <div className="bg-white rounded-2xl shadow-xl p-6 sm:p-8 md:p-10 flex flex-col justify-center">
 
                         <h3 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-4">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img alt='Icono Dimensiones' className='h-16 w-16' src="border-top-svgrepo-com.svg" /> Dimensiones de los Boxes
                         </h3>
                         <p className="text-slate-600 mb-4 text-sm sm:text-base leading-relaxed">
@@ -48,6 +50,7 @@ export default function LocationSection() {
                     {/* Texto - Abajo Izquierda */}
                     <div className="bg-white rounded-2xl shadow-xl p-6 sm:p-8 md:p-10 flex flex-col justify-center">
                         <h3 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-4">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img alt="Icono Ubicación" className='h-12 w-12' src="place-svgrepo-com.svg" /> Ubicación
                         </h3>
                         <p className="text-slate-600 mb-4 text-sm sm:text-base leading-relaxed">

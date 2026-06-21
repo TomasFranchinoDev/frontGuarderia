@@ -1,18 +1,28 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
+import Link from 'next/link';
 import {
     Lock, Settings, Users, Search, Plus,
-    Trash2, Edit2, Check, X, DollarSign, Save, Clock, RefreshCw
+    Trash2, Edit2, Check, X, DollarSign, Save, Clock, RefreshCw, ArrowLeft, BarChart3, TrendingUp, AlertTriangle, CreditCard
 } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 // --- TIPOS (Types) ---
-type Payment = {
+type Transaction = {
     id: string;
-    amount: number;
+    amount_paid: number;
+    payment_date: string;
+    method: string;
+};
+
+type Charge = {
+    id: string;
+    total_amount: number;
     month_period: string;
-    status: 'PENDING' | 'PAID';
-    method: string | null;
+    status: 'PENDING' | 'PARTIAL' | 'PAID';
+    transactions: Transaction[];
 };
 
 type Client = {
@@ -21,7 +31,9 @@ type Client = {
     phone: string;
     box_number: number;
     status: 'ACTIVE' | 'DEBTOR';
-    payments: Payment[];
+    is_active: boolean;
+    credit_balance: number;
+    charges: Charge[];
     current_debt: number;
 };
 
@@ -35,13 +47,21 @@ type WaitlistEntry = {
     created_at?: string | null;
 };
 
+type DashboardStats = {
+    current_month: { invoiced: number, paid: number, cash: number, transfer: number },
+    last_year: { invoiced: number, paid: number, cash: number, transfer: number },
+    total_debt: number,
+    top_debtors: { name: string, phone: string, debt: number }[],
+    history: { month: string, revenue: number }[]
+};
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export default function AdminPage() {
     // --- ESTADOS GLOBALES ---
     const [secret, setSecret] = useState('');
     const [isAuthenticated, setIsAuthenticated] = useState(false);
-    const [activeTab, setActiveTab] = useState<'clients' | 'settings' | 'waitlist'>('clients');
+    const [activeTab, setActiveTab] = useState<'dashboard' | 'clients' | 'settings' | 'waitlist'>('dashboard');
     const [loading, setLoading] = useState(false);
     const [loginError, setLoginError] = useState('');
 
@@ -59,8 +79,14 @@ export default function AdminPage() {
                 headers: { 'x-admin-secret': secret }
             });
 
-            if (res.status === 403) {
-                setLoginError('Contraseña inválida');
+            if (!res.ok) {
+                if (res.status === 403) {
+                    setLoginError('Contraseña inválida');
+                } else if (res.status === 429) {
+                    setLoginError('Demasiados intentos. Espera 1 minuto.');
+                } else {
+                    setLoginError('Error al verificar contraseña');
+                }
                 setIsAuthenticated(false);
                 return;
             }
@@ -76,8 +102,14 @@ export default function AdminPage() {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gray-100">
                 <form onSubmit={handleLogin} className="bg-white p-8 rounded-xl shadow-lg w-full max-w-sm">
-                    <div className="flex justify-center mb-4 text-blue-600">
-                        <Lock size={48} />
+                    <div className="flex justify-center mb-4">
+                        <Image
+                            src="/image-sin-fondo.webp"
+                            alt="Logo Guardería"
+                            width={80}
+                            height={80}
+                            className="object-contain"
+                        />
                     </div>
                     <h2 className="text-2xl font-bold text-center mb-6">Panel Administrador</h2>
                     <input
@@ -88,9 +120,16 @@ export default function AdminPage() {
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none mb-4"
                     />
                     {loginError && <p className="text-sm text-red-600 mb-3 text-center">{loginError}</p>}
-                    <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition">
+                    <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition mb-4">
                         Ingresar
                     </button>
+                    <Link 
+                        href="/" 
+                        className="flex items-center justify-center gap-2 text-sm text-gray-500 hover:text-blue-600 transition font-medium"
+                    >
+                        <ArrowLeft size={16} />
+                        Volver a la página principal
+                    </Link>
                 </form>
             </div>
         );
@@ -100,8 +139,15 @@ export default function AdminPage() {
         <div className="min-h-screen bg-gray-50 flex flex-col">
             {/* Header Admin */}
             <header className="bg-white border-b border-gray-200 px-4 py-3 md:px-6 md:py-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 sticky top-0 z-10">
-                <div className="flex items-center gap-2 font-bold text-lg md:text-xl">
-                    <span>🛡️ Panel Administrador</span>
+                <div className="flex items-center gap-3 font-bold text-lg md:text-xl">
+                    <Image
+                        src="/image-sin-fondo.webp"
+                        alt="Logo"
+                        width={36}
+                        height={36}
+                        className="object-contain"
+                    />
+                    <span>Panel Administrador</span>
                 </div>
                 <button
                     onClick={() => setIsAuthenticated(false)}
@@ -112,7 +158,13 @@ export default function AdminPage() {
             </header>
 
             {/* Tabs de Navegación */}
-            <div className="flex justify-center bg-white border-b border-gray-200 overflow-x-auto">
+            <div className="flex justify-start sm:justify-center bg-white border-b border-gray-200 overflow-x-auto scrollbar-hide">
+                <button
+                    onClick={() => setActiveTab('dashboard')}
+                    className={`px-4 py-3 md:px-6 flex items-center gap-2 text-sm md:text-base font-medium border-b-2 transition-colors whitespace-nowrap ${activeTab === 'dashboard' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
+                >
+                    <BarChart3 size={18} /> Dashboard
+                </button>
                 <button
                     onClick={() => setActiveTab('clients')}
                     className={`px-4 py-3 md:px-6 flex items-center gap-2 text-sm md:text-base font-medium border-b-2 transition-colors whitespace-nowrap ${activeTab === 'clients' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-800'
@@ -136,11 +188,12 @@ export default function AdminPage() {
                 </button>
             </div>
 
-            {/* Contenido Principal */}
-            <main className="flex-1 container mx-auto p-4 md:p-6">
-                {activeTab === 'settings' && <SettingsView secret={secret} />}
+            {/* Main Content Area */}
+            <main className="flex-1 p-4 md:p-6 w-full max-w-7xl mx-auto overflow-x-hidden">
+                {activeTab === 'dashboard' && <DashboardView secret={secret} />}
                 {activeTab === 'clients' && <ClientsView secret={secret} />}
                 {activeTab === 'waitlist' && <WaitlistView secret={secret} />}
+                {activeTab === 'settings' && <SettingsView secret={secret} />}
             </main>
         </div>
     );
@@ -156,6 +209,7 @@ function SettingsView({ secret }: { secret: string }) {
     const [error, setError] = useState('');
     const [generatingDebt, setGeneratingDebt] = useState(false);
     const [debtMsg, setDebtMsg] = useState('');
+    const [selectedDebtMonth, setSelectedDebtMonth] = useState<'current' | 'next'>('current');
     const [clientsForMessages, setClientsForMessages] = useState<Client[]>([]);
     const [clientsLoading, setClientsLoading] = useState(false);
     const [clientsError, setClientsError] = useState('');
@@ -319,43 +373,34 @@ function SettingsView({ secret }: { secret: string }) {
                 </div>
             </div>
 
-            {/* Sección de Generar Deudas Mensuales - Mes Actual */}
+            {/* Sección de Generar Deudas Mensuales */}
             <div className="bg-white rounded-xl shadow p-4 md:p-6">
                 <h3 className="text-base md:text-lg font-bold text-gray-800 mb-3 md:mb-4 flex items-center gap-2">
                     <DollarSign className="text-orange-600" size={20} />
-                    Generar Deudas del Mes Actual
+                    Generar Deudas Mensuales
                 </h3>
                 <p className="text-xs md:text-sm text-gray-500 mb-3 md:mb-4">
-                    Crea automáticamente las cuotas del mes actual para todos los clientes activos.
+                    Crea automáticamente las cuotas para todos los clientes activos del mes seleccionado.
                 </p>
 
-                <button
-                    onClick={() => handleGenerateDebt(false)}
-                    disabled={generatingDebt}
-                    className="w-full bg-orange-600 text-white font-bold py-2 md:py-3 rounded-lg hover:bg-orange-700 disabled:opacity-50 text-sm md:text-base"
-                >
-                    {generatingDebt ? 'Generando...' : 'Generar Cuotas del Mes Actual'}
-                </button>
-                {debtMsg && <p className="text-center text-xs md:text-sm font-medium mt-3 animate-pulse">{debtMsg}</p>}
-            </div>
-
-            {/* Sección de Generar Deudas Mensuales - Mes Siguiente */}
-            <div className="bg-white rounded-xl shadow p-4 md:p-6">
-                <h3 className="text-base md:text-lg font-bold text-gray-800 mb-3 md:mb-4 flex items-center gap-2">
-                    <DollarSign className="text-orange-600" size={20} />
-                    Generar Deudas del Mes Siguiente
-                </h3>
-                <p className="text-xs md:text-sm text-gray-500 mb-3 md:mb-4">
-                    Crea automáticamente las cuotas del próximo mes para todos los clientes activos.
-                </p>
-
-                <button
-                    onClick={() => handleGenerateDebt(true)}
-                    disabled={generatingDebt}
-                    className="w-full bg-orange-600 text-white font-bold py-2 md:py-3 rounded-lg hover:bg-orange-700 disabled:opacity-50 text-sm md:text-base"
-                >
-                    {generatingDebt ? 'Generando...' : 'Generar Cuotas del Mes Siguiente'}
-                </button>
+                <div className="flex flex-col sm:flex-row gap-3">
+                    <select 
+                        value={selectedDebtMonth} 
+                        onChange={(e) => setSelectedDebtMonth(e.target.value as 'current' | 'next')}
+                        className="px-3 md:px-4 py-2 border rounded-lg text-sm md:text-base outline-none focus:ring-2 focus:ring-orange-500 flex-1 bg-gray-50"
+                        disabled={generatingDebt}
+                    >
+                        <option value="current">Mes Actual</option>
+                        <option value="next">Mes Siguiente</option>
+                    </select>
+                    <button
+                        onClick={() => handleGenerateDebt(selectedDebtMonth === 'next')}
+                        disabled={generatingDebt}
+                        className="bg-orange-600 text-white font-bold px-6 py-2 md:py-3 rounded-lg hover:bg-orange-700 disabled:opacity-50 text-sm md:text-base whitespace-nowrap transition-colors"
+                    >
+                        {generatingDebt ? 'Generando...' : 'Generar Cuotas'}
+                    </button>
+                </div>
                 {debtMsg && <p className="text-center text-xs md:text-sm font-medium mt-3 animate-pulse">{debtMsg}</p>}
             </div>
 
@@ -420,6 +465,7 @@ function SettingsView({ secret }: { secret: string }) {
 function ClientsView({ secret }: { secret: string }) {
     const [clients, setClients] = useState<Client[]>([]);
     const [search, setSearch] = useState('');
+    const [statusFilter, setStatusFilter] = useState<'active' | 'inactive' | 'all'>('active');
     const [listMsg, setListMsg] = useState('');
     const [selectedClient, setSelectedClient] = useState<Client | null>(null); // Para el Modal
     const [showCreate, setShowCreate] = useState(false);
@@ -428,7 +474,8 @@ function ClientsView({ secret }: { secret: string }) {
 
     const fetchClients = async () => {
         try {
-            const res = await fetch(`${API_URL}/admin/clients`, {
+            const url = `${API_URL}/admin/clients?is_active=${statusFilter === 'active' ? 'true' : statusFilter === 'inactive' ? 'false' : 'all'}`;
+            const res = await fetch(url, {
                 headers: { 'x-admin-secret': secret }
             });
 
@@ -450,7 +497,18 @@ function ClientsView({ secret }: { secret: string }) {
     useEffect(() => {
         fetchClients();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [secret]);
+    }, [secret, statusFilter]);
+
+    // Sincronizar el modal seleccionado cuando los datos de clientes cambien
+    useEffect(() => {
+        if (selectedClient) {
+            const updatedClient = clients.find(c => c.id === selectedClient.id);
+            if (updatedClient && JSON.stringify(updatedClient) !== JSON.stringify(selectedClient)) {
+                setSelectedClient(updatedClient);
+            }
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [clients]);
 
     // Filtrado simple frontend
     const filteredClients = clients.filter(c =>
@@ -485,7 +543,7 @@ function ClientsView({ secret }: { secret: string }) {
         <div>
             {/* Barra de Herramientas */}
             <div className="flex flex-col md:flex-row md:justify-between gap-3 md:gap-0 mb-4 md:mb-6">
-                <div className="flex flex-col sm:flex-row gap-2 md:w-auto w-full">
+                <div className="flex flex-col sm:flex-row gap-3 md:w-auto w-full items-start sm:items-center">
                     <div className="relative flex-1 sm:flex-initial sm:w-64 md:w-72">
                         <Search className="absolute left-3 top-2.5 md:top-3 text-gray-400" size={18} />
                         <input
@@ -496,9 +554,18 @@ function ClientsView({ secret }: { secret: string }) {
                             className="w-full pl-10 pr-3 md:pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm md:text-base"
                         />
                     </div>
+                    <select
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value as 'active' | 'inactive' | 'all')}
+                        className="px-3 py-2 border rounded-lg text-sm md:text-base outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-700 cursor-pointer w-full sm:w-auto"
+                    >
+                        <option value="active">Solo Activos</option>
+                        <option value="inactive">Solo Inactivos</option>
+                        <option value="all">Todos los Clientes</option>
+                    </select>
                     <button
                         onClick={fetchClients}
-                        className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2 hover:bg-blue-700 text-sm md:text-base"
+                        className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2 hover:bg-blue-700 text-sm md:text-base w-full sm:w-auto"
                     >
                         Refrescar
                     </button>
@@ -525,12 +592,22 @@ function ClientsView({ secret }: { secret: string }) {
                     </thead>
                     <tbody className="divide-y divide-gray-100">
                         {filteredClients.map(client => (
-                            <tr key={client.id} className="hover:bg-gray-50 transition">
-                                <td className="px-6 py-4 font-medium">{client.name}</td>
+                            <tr key={client.id} className={`hover:bg-gray-50 transition ${!client.is_active ? 'opacity-50 grayscale' : ''}`}>
+                                <td className="px-6 py-4 font-medium">
+                                    {client.name}
+                                    {!client.is_active && <span className="ml-2 text-xs text-red-500 font-bold">(Inactivo)</span>}
+                                </td>
                                 <td className="px-6 py-4 text-gray-500">{client.phone}</td>
                                 <td className="px-6 py-4"><span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-bold">{client.box_number}</span></td>
-                                <td className={`px-6 py-4 font-bold ${client.current_debt > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                                    ${client.current_debt.toLocaleString()}
+                                <td className="px-6 py-4">
+                                    <div className={`font-bold ${client.current_debt > 0 ? 'text-red-600' : 'text-gray-800'}`}>
+                                        ${client.current_debt.toLocaleString()}
+                                    </div>
+                                    {client.credit_balance > 0 && (
+                                        <div className="text-xs text-green-600 font-bold mt-1">
+                                            A favor: ${client.credit_balance.toLocaleString()}
+                                        </div>
+                                    )}
                                 </td>
                                 <td className="px-6 py-4 flex justify-center gap-3">
                                     <button
@@ -571,21 +648,34 @@ function ClientsView({ secret }: { secret: string }) {
             {/* Tarjetas de Clientes - Mobile */}
             <div className="md:hidden space-y-3">
                 {filteredClients.map(client => (
-                    <div key={client.id} className="bg-white rounded-xl shadow p-4">
+                    <div key={client.id} className={`bg-white rounded-xl shadow p-4 ${!client.is_active ? 'opacity-60' : ''}`}>
                         <div className="flex justify-between items-start mb-3">
                             <div>
-                                <h3 className="font-bold text-gray-800 text-base">{client.name}</h3>
+                                <h3 className="font-bold text-gray-800 text-base">
+                                    {client.name}
+                                    {!client.is_active && <span className="ml-2 text-xs text-red-500 font-bold">(Inactivo)</span>}
+                                </h3>
                                 <p className="text-sm text-gray-500">{client.phone}</p>
                             </div>
                             <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-bold">
                                 Box {client.box_number}
                             </span>
                         </div>
-                        <div className="mb-3">
-                            <span className="text-xs text-gray-500">Deuda Total:</span>
-                            <span className={`ml-2 text-lg font-bold ${client.current_debt > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                                ${client.current_debt.toLocaleString()}
-                            </span>
+                        <div className="mb-3 border-t border-b border-gray-50 py-2">
+                            <div className="flex justify-between items-center">
+                                <span className="text-xs text-gray-500">Deuda Total:</span>
+                                <span className={`text-lg font-bold ${client.current_debt > 0 ? 'text-red-600' : 'text-gray-800'}`}>
+                                    ${client.current_debt.toLocaleString()}
+                                </span>
+                            </div>
+                            {client.credit_balance > 0 && (
+                                <div className="flex justify-between items-center mt-1">
+                                    <span className="text-xs text-gray-500">Saldo a favor:</span>
+                                    <span className="text-sm font-bold text-green-600">
+                                        ${client.credit_balance.toLocaleString()}
+                                    </span>
+                                </div>
+                            )}
                         </div>
                         <div className="flex flex-col gap-2">
                             <button
@@ -661,116 +751,136 @@ function ClientsView({ secret }: { secret: string }) {
 }
 
 // ==========================================
-// COMPONENTE MODAL: GESTIÓN AVANZADA DE PAGOS
+// COMPONENTE MODAL: GESTIÓN AVANZADA DE CUOTAS
 // ==========================================
 function ClientDetailModal({ client, secret, onClose, onRefresh }: { client: Client, secret: string, onClose: () => void, onRefresh: () => void }) {
-    // Estado local para los pagos que se actualiza al crear/editar/eliminar
-    const [localPayments, setLocalPayments] = useState<Payment[]>(client.payments);
-
-    // Función para editar un pago individual (Parcial o Total)
-    const handleUpdatePayment = async (paymentId: string, newAmount: number, newStatus: string, newMethod: string | null) => {
-        try {
-            const res = await fetch(`${API_URL}/admin/payments/${paymentId}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json', 'x-admin-secret': secret },
-                body: JSON.stringify({
-                    amount: newAmount,
-                    status: newStatus,
-                    method: newMethod || null
-                })
-            });
-            if (res.ok) {
-                alert("Pago actualizado correctamente");
-                // Actualizar localmente
-                setLocalPayments(prev => prev.map(p => p.id === paymentId ? { ...p, amount: newAmount, status: newStatus as 'PENDING' | 'PAID', method: newMethod } : p));
-                onRefresh();
-            } else {
-                alert("Error al actualizar");
-            }
-        } catch (e) {
-            alert("Error de red");
-        }
-    };
-
-    const handleDeletePayment = async (paymentId: string) => {
-        const ok = window.confirm('¿Eliminar este pago?');
-        if (!ok) return;
-        try {
-            const res = await fetch(`${API_URL}/admin/payments/${paymentId}`, {
-                method: 'DELETE',
-                headers: { 'x-admin-secret': secret }
-            });
-            if (!res.ok) {
-                const text = await res.text();
-                alert(text || 'No se pudo eliminar el pago');
-                return;
-            }
-            // Actualizar localmente
-            setLocalPayments(prev => prev.filter(p => p.id !== paymentId));
-            onRefresh();
-        } catch (e) {
-            alert('Error de red al eliminar pago');
-        }
-    };
-
-    const handleCreatePayment = async (newPayment: Payment) => {
-        // Agregar el nuevo pago a la lista local inmediatamente
-        setLocalPayments(prev => [...prev, newPayment]);
-        onRefresh();
-    };
-
-    const [showCreatePayment, setShowCreatePayment] = useState(false);
+    const [showCreateTx, setShowCreateTx] = useState<string | null>(null);
+    const [showCreateCharge, setShowCreateCharge] = useState(false);
 
     return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto my-4">
-                {/* Modal Header */}
-                <div className="bg-gray-100 px-4 md:px-6 py-3 md:py-4 border-b flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-0 sticky top-0">
-                    <div>
-                        <h2 className="text-lg md:text-xl font-bold text-gray-800">{client.name}</h2>
+                <div className="bg-gray-100 px-4 md:px-6 py-3 md:py-4 border-b flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 sticky top-0 z-10">
+                    <div className="pr-8">
+                        <h2 className="text-lg md:text-xl font-bold text-gray-800 break-words">{client.name}</h2>
                         <p className="text-xs md:text-sm text-gray-500">Box: {client.box_number} | Tel: {client.phone}</p>
                     </div>
-                    <button onClick={onClose} className="p-2 hover:bg-gray-200 rounded-full">
+                    {client.credit_balance > 0 && (
+                        <div className="mt-2 sm:mt-0 sm:pr-8">
+                            <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs md:text-sm font-bold border border-green-200 inline-block">
+                                Saldo a favor: ${client.credit_balance.toLocaleString()}
+                            </span>
+                        </div>
+                    )}
+                    <button onClick={onClose} className="absolute top-3 right-3 md:top-4 md:right-4 p-2 hover:bg-gray-200 bg-gray-100/80 rounded-full transition-colors">
                         <X size={20} />
                     </button>
                 </div>
 
-                {/* Lista de Pagos */}
                 <div className="p-4 md:p-6 space-y-4 md:space-y-6">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b pb-2 gap-2 sm:gap-0">
+                    <div className="flex justify-between items-center border-b pb-2">
                         <h3 className="font-bold text-gray-700 text-sm md:text-base">Historial de Cuotas</h3>
-                        <button
-                            onClick={() => setShowCreatePayment(true)}
-                            className="text-xs md:text-sm bg-green-600 text-white px-3 py-1.5 md:py-1 rounded hover:bg-green-700"
+                        <button 
+                            onClick={() => setShowCreateCharge(true)}
+                            className="bg-green-600 text-white px-3 py-1.5 rounded-lg text-xs md:text-sm font-medium hover:bg-green-700 transition flex items-center gap-1"
                         >
-                            Agregar pago
+                            <Plus size={16} /> <span className="hidden sm:inline">Generar Cuota Adelantada</span><span className="sm:hidden">Adelantar</span>
                         </button>
                     </div>
-
-                    {localPayments.map((payment) => (
-                        <PaymentRow
-                            key={payment.id}
-                            payment={payment}
-                            onSave={handleUpdatePayment}
-                            onDelete={handleDeletePayment}
+                    
+                    {client.charges.map((charge) => (
+                        <ChargeRow
+                            key={charge.id}
+                            charge={charge}
+                            secret={secret}
+                            onRefresh={onRefresh}
+                            onAddTransaction={(id) => setShowCreateTx(id)}
                         />
                     ))}
 
-                    {localPayments.length === 0 && <p className="text-gray-400 italic text-sm md:text-base">Este cliente no tiene historial de pagos.</p>}
+                    {client.charges.length === 0 && <p className="text-gray-400 italic text-sm md:text-base">Este cliente no tiene historial de cuotas.</p>}
                 </div>
-                {/* MODAL CREAR PAGO */}
-                {showCreatePayment && (
-                    <CreatePaymentModal
+
+                {showCreateTx && (
+                    <CreateTransactionModal
+                        chargeId={showCreateTx}
+                        secret={secret}
+                        onClose={() => setShowCreateTx(null)}
+                        onCreated={() => {
+                            setShowCreateTx(null);
+                            onRefresh();
+                        }}
+                    />
+                )}
+
+                {showCreateCharge && (
+                    <CreateManualChargeModal
                         clientId={client.id}
                         secret={secret}
-                        onClose={() => setShowCreatePayment(false)}
-                        onPaymentCreated={(newPayment) => {
-                            setShowCreatePayment(false);
-                            handleCreatePayment(newPayment);
+                        onClose={() => setShowCreateCharge(false)}
+                        onCreated={() => {
+                            setShowCreateCharge(false);
+                            onRefresh();
                         }}
                     />
                 )}
             </div>
+        </div>
+    );
+}
+
+function ChargeRow({ charge, secret, onRefresh, onAddTransaction }: { charge: Charge, secret: string, onRefresh: () => void, onAddTransaction: (id: string) => void }) {
+    const handleDeleteTx = async (txId: string) => {
+        if (!window.confirm('¿Eliminar esta transacción? Esto revertirá el saldo y el estado de la cuota.')) return;
+        try {
+            const res = await fetch(`${API_URL}/admin/transactions/${txId}`, {
+                method: 'DELETE',
+                headers: { 'x-admin-secret': secret }
+            });
+            if (res.ok) onRefresh();
+            else {
+                const text = await res.text();
+                alert(text || 'Error al eliminar la transacción');
+            }
+        } catch(e) { alert('Error de red'); }
+    };
+
+    return (
+        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-2 gap-3">
+                <div>
+                    <span className="font-bold text-gray-800 capitalize mr-2">{charge.month_period}</span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${charge.status === 'PAID' ? 'bg-green-100 text-green-700' : charge.status === 'PARTIAL' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
+                        {charge.status === 'PAID' ? 'PAGADO' : charge.status === 'PARTIAL' ? 'PARCIAL' : 'PENDIENTE'}
+                    </span>
+                </div>
+                <div className="flex flex-row justify-between items-center w-full sm:w-auto gap-3">
+                    <span className="font-bold text-lg text-gray-800">${charge.total_amount.toLocaleString()}</span>
+                    {(charge.status === 'PENDING' || charge.status === 'PARTIAL') && (
+                        <button onClick={() => onAddTransaction(charge.id)} className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-blue-700 transition">
+                            Abonar
+                        </button>
+                    )}
+                </div>
+            </div>
+            
+            {charge.transactions.length > 0 && (
+                <div className="mt-3 bg-white p-3 rounded-lg border border-gray-100 shadow-sm">
+                    <h4 className="text-xs font-semibold text-gray-500 mb-2 uppercase">Transacciones registradas:</h4>
+                    {charge.transactions.map(tx => (
+                        <div key={tx.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 py-2 border-b last:border-0 border-gray-50 text-sm">
+                            <div className="flex flex-row items-center justify-between sm:justify-start gap-2 w-full sm:w-auto">
+                                <span className="text-gray-600 font-medium">{new Date(tx.payment_date).toLocaleDateString('es-AR')}</span>
+                                <span className="text-xs bg-gray-100 px-2 py-1 rounded-md text-gray-600 font-medium">{tx.method === 'TRANSFER' ? 'Transferencia' : 'Efectivo'}</span>
+                            </div>
+                            <div className="flex flex-row items-center justify-between sm:justify-end gap-3 w-full sm:w-auto">
+                                <span className="font-bold text-green-600">+${tx.amount_paid.toLocaleString()}</span>
+                                <button onClick={() => handleDeleteTx(tx.id)} className="text-red-500 hover:text-red-700 p-1 bg-red-50 hover:bg-red-100 rounded transition" title="Eliminar Transacción"><Trash2 size={16}/></button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
         </div>
     );
 }
@@ -883,115 +993,13 @@ function CreateClientModal({ secret, onClose, onCreated }: { secret: string, onC
     );
 }
 
-// Sub-componente para editar cada fila de pago
-function PaymentRow({ payment, onSave, onDelete }: { payment: Payment, onSave: (id: string, am: number, st: string, method: string | null) => void, onDelete: (id: string) => void }) {
-    const [isEditing, setIsEditing] = useState(false);
-    const [editAmount, setEditAmount] = useState(payment.amount);
-    const [editStatus, setEditStatus] = useState(payment.status);
-    const [editMethod, setEditMethod] = useState(payment.method || '');
-
-    if (isEditing) {
-        return (
-            <div className="bg-blue-50 p-3 md:p-4 rounded-lg border border-blue-200">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 md:gap-3 mb-3">
-                    <div>
-                        <label className="text-xs text-gray-500 block mb-1">Monto ($)</label>
-                        <input
-                            type="number"
-                            value={editAmount}
-                            onChange={e => setEditAmount(Number(e.target.value))}
-                            className="w-full px-2 py-1.5 border rounded text-sm"
-                        />
-                    </div>
-                    <div>
-                        <label className="text-xs text-gray-500 block mb-1">Estado</label>
-                        <select
-                            value={editStatus}
-                            onChange={e => setEditStatus(e.target.value as any)}
-                            className="w-full px-2 py-1.5 border rounded text-sm"
-                        >
-                            <option value="PENDING">Pendiente</option>
-                            <option value="PAID">Pagado</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label className="text-xs text-gray-500 block mb-1">Método</label>
-                        <select
-                            value={editMethod}
-                            onChange={e => setEditMethod(e.target.value)}
-                            className="w-full px-2 py-1.5 border rounded text-sm"
-                        >
-                            <option value="">Sin registrar</option>
-                            <option value="CASH">Efectivo</option>
-                            <option value="TRANSFER">Transferencia</option>
-                        </select>
-                    </div>
-                </div>
-                <div className="flex gap-2 justify-end">
-                    <button
-                        onClick={() => onSave(payment.id, editAmount, editStatus, editMethod || null)}
-                        className="bg-green-600 text-white p-2 rounded hover:bg-green-700"
-                        title="Guardar"
-                    >
-                        <Save size={16} />
-                    </button>
-                    <button
-                        onClick={() => setIsEditing(false)}
-                        className="bg-gray-300 text-gray-700 p-2 rounded hover:bg-gray-400"
-                        title="Cancelar"
-                    >
-                        <X size={16} />
-                    </button>
-                </div>
-            </div>
-        );
-    }
-
-    return (
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 p-3 md:p-4 bg-gray-50 rounded-lg border border-gray-100">
-            <div className="flex-1">
-                <p className="font-bold text-gray-800 capitalize text-sm md:text-base">{payment.month_period}</p>
-                <div className="flex flex-wrap items-center gap-2 mt-1">
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${payment.status === 'PAID' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                        }`}>
-                        {payment.status === 'PAID' ? 'PAGADO' : 'PENDIENTE'}
-                    </span>
-                    {payment.method && (
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-gray-200 text-gray-700 font-medium">
-                            {payment.method === 'TRANSFER' ? 'Transferencia' : 'Efectivo'}
-                        </span>
-                    )}
-                </div>
-            </div>
-            <div className="flex items-center gap-2 sm:gap-4 w-full sm:w-auto justify-between sm:justify-end">
-                <span className="font-mono font-bold text-base md:text-lg">${payment.amount.toLocaleString()}</span>
-                <div className="flex gap-1">
-                    <button
-                        onClick={() => setIsEditing(true)}
-                        className="text-blue-600 hover:bg-blue-100 p-2 rounded-full transition"
-                        title="Editar Saldo/Estado"
-                    >
-                        <Edit2 size={18} />
-                    </button>
-                    <button
-                        onClick={() => onDelete(payment.id)}
-                        className="text-red-600 hover:bg-red-100 p-2 rounded-full transition"
-                        title="Eliminar pago"
-                    >
-                        <Trash2 size={18} />
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
-}
-
 // Modal para editar un cliente existente
 function EditClientModal({ secret, client, onClose, onUpdated }: { secret: string, client: Client, onClose: () => void, onUpdated: () => void }) {
     const [name, setName] = useState(client.name);
     const [phone, setPhone] = useState(client.phone);
     const [boxNumber, setBoxNumber] = useState<number | ''>(client.box_number);
     const [status, setStatus] = useState<'ACTIVE' | 'DEBTOR'>(client.status);
+    const [isActive, setIsActive] = useState(client.is_active);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
 
@@ -1010,7 +1018,8 @@ function EditClientModal({ secret, client, onClose, onUpdated }: { secret: strin
                     name: name.trim(),
                     phone: phone.trim(),
                     box_number: Number(boxNumber),
-                    status
+                    status,
+                    is_active: isActive
                 })
             });
             if (!res.ok) {
@@ -1038,53 +1047,35 @@ function EditClientModal({ secret, client, onClose, onUpdated }: { secret: strin
                 <div className="p-4 md:p-6 space-y-3 md:space-y-4">
                     <div>
                         <label className="text-xs md:text-sm text-gray-600 block mb-1">Nombre</label>
-                        <input
-                            type="text"
-                            value={name}
-                            onChange={e => setName(e.target.value)}
-                            className="w-full px-3 py-2 border rounded text-sm md:text-base"
-                        />
+                        <input type="text" value={name} onChange={e => setName(e.target.value)} className="w-full px-3 py-2 border rounded text-sm md:text-base" />
                     </div>
                     <div>
                         <label className="text-xs md:text-sm text-gray-600 block mb-1">Teléfono</label>
-                        <input
-                            type="text"
-                            value={phone}
-                            onChange={e => setPhone(e.target.value)}
-                            className="w-full px-3 py-2 border rounded text-sm md:text-base"
-                        />
+                        <input type="text" value={phone} onChange={e => setPhone(e.target.value)} className="w-full px-3 py-2 border rounded text-sm md:text-base" />
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                         <div>
                             <label className="text-xs md:text-sm text-gray-600 block mb-1">Box</label>
-                            <input
-                                type="number"
-                                value={boxNumber}
-                                onChange={e => setBoxNumber(e.target.value === '' ? '' : Number(e.target.value))}
-                                className="w-full px-3 py-2 border rounded text-sm md:text-base"
-                                min={1}
-                            />
+                            <input type="number" value={boxNumber} onChange={e => setBoxNumber(e.target.value === '' ? '' : Number(e.target.value))} className="w-full px-3 py-2 border rounded text-sm md:text-base" min={1} />
                         </div>
                         <div>
-                            <label className="text-xs md:text-sm text-gray-600 block mb-1">Estado</label>
-                            <select
-                                value={status}
-                                onChange={e => setStatus(e.target.value as 'ACTIVE' | 'DEBTOR')}
-                                className="w-full px-3 py-2 border rounded text-sm md:text-base"
-                            >
-                                <option value="ACTIVE">Activo</option>
+                            <label className="text-xs md:text-sm text-gray-600 block mb-1">Estado de Pago</label>
+                            <select value={status} onChange={e => setStatus(e.target.value as 'ACTIVE' | 'DEBTOR')} className="w-full px-3 py-2 border rounded text-sm md:text-base">
+                                <option value="ACTIVE">Al Día</option>
                                 <option value="DEBTOR">Deudor</option>
                             </select>
                         </div>
                     </div>
+                    <div>
+                        <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer mt-2 bg-gray-50 p-2 rounded border border-gray-200 select-none">
+                            <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500" />
+                            Cliente Activo en el Sistema
+                        </label>
+                    </div>
                     {error && <p className="text-xs md:text-sm text-red-600">{error}</p>}
                     <div className="flex justify-end gap-2 pt-2">
-                        <button onClick={onClose} className="px-3 py-2 border rounded text-sm md:text-base">Cancelar</button>
-                        <button
-                            onClick={handleSave}
-                            disabled={saving}
-                            className="px-3 py-2 rounded bg-blue-600 text-white disabled:opacity-50 text-sm md:text-base"
-                        >
+                        <button onClick={onClose} className="px-3 py-2 border rounded text-sm md:text-base hover:bg-gray-50">Cancelar</button>
+                        <button onClick={handleSave} disabled={saving} className="px-3 py-2 rounded bg-blue-600 text-white disabled:opacity-50 text-sm md:text-base hover:bg-blue-700">
                             {saving ? 'Guardando...' : 'Actualizar'}
                         </button>
                     </div>
@@ -1094,119 +1085,193 @@ function EditClientModal({ secret, client, onClose, onUpdated }: { secret: strin
     );
 }
 
-// Modal para crear pago manual
-function CreatePaymentModal({ clientId, secret, onClose, onPaymentCreated }: { clientId: string, secret: string, onClose: () => void, onPaymentCreated: (payment: Payment) => void }) {
+function getNextMonthsOptions() {
+    const options = [];
+    const today = new Date();
+    for (let i = 0; i < 12; i++) {
+        const d = new Date(today.getFullYear(), today.getMonth() + i, 1);
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const monthName = d.toLocaleString('es-ES', { month: 'long' });
+        options.push({
+            value: `${year}-${month}-01`,
+            label: `${monthName.charAt(0).toUpperCase() + monthName.slice(1)} ${year}`
+        });
+    }
+    return options;
+}
+
+// Modal para generar cuota manual/adelantada
+function CreateManualChargeModal({ clientId, secret, onClose, onCreated }: { clientId: string, secret: string, onClose: () => void, onCreated: () => void }) {
     const [amount, setAmount] = useState<number | ''>('');
-    const [monthPeriod, setMonthPeriod] = useState('');
-    const [status, setStatus] = useState<'PENDING' | 'PAID'>('PENDING');
-    const [method, setMethod] = useState<string>('');
+    const [monthOptions] = useState(() => getNextMonthsOptions());
+    const [monthPeriod, setMonthPeriod] = useState<string>(() => monthOptions.length > 0 ? monthOptions[0].value : '');
+    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState('');
+
+    useEffect(() => {
+        let isMounted = true;
+        fetch(`${API_URL}/admin/fee`, { headers: { 'x-admin-secret': secret } })
+            .then(res => res.json())
+            .then(data => { if (isMounted) setAmount(Number(data.value)); })
+            .catch(() => { if (isMounted) setAmount(100); }); // default fallback
+        return () => { isMounted = false; };
+    }, [secret]);
+
+    const handleSave = async () => {
+        setError('');
+        if (amount === '' || Number(amount) <= 0 || !monthPeriod) {
+            setError('Ingresa un monto positivo y selecciona el mes');
+            return;
+        }
+        setSaving(true);
+        try {
+            const res = await fetch(`${API_URL}/admin/charges`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'x-admin-secret': secret },
+                body: JSON.stringify({
+                    client_id: clientId,
+                    total_amount: Number(amount),
+                    month_period: monthPeriod
+                })
+            });
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                setError(data.detail || 'No se pudo generar la cuota. Revisa si ya existe una para este mes.');
+                setSaving(false);
+                return;
+            }
+            onCreated();
+        } catch {
+            setError('Error de red al registrar la cuota');
+            setSaving(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4 overflow-y-auto">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm my-4">
+                <div className="bg-gray-100 px-4 py-3 border-b flex justify-between items-center">
+                    <h3 className="font-bold text-gray-800 text-base">Generar Cuota Adelantada</h3>
+                    <button onClick={onClose} className="p-2 hover:bg-gray-200 rounded-full"><X size={18} /></button>
+                </div>
+                <div className="p-5 space-y-4">
+                    <div>
+                        <label className="text-sm font-semibold text-gray-700 block mb-1">Mes a cobrar</label>
+                        <select
+                            value={monthPeriod}
+                            onChange={e => setMonthPeriod(e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-base outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                            {monthOptions.map(o => (
+                                <option key={o.value} value={o.value}>{o.label}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="text-sm font-semibold text-gray-700 block mb-1">Monto de la Cuota ($)</label>
+                        <input
+                            type="number"
+                            value={amount}
+                            onChange={e => setAmount(e.target.value === '' ? '' : Number(e.target.value))}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-base outline-none focus:ring-2 focus:ring-blue-500"
+                            min={1}
+                        />
+                    </div>
+                    {error && <p className="text-sm text-red-600 bg-red-50 p-2 rounded">{error}</p>}
+                    <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 pt-2">
+                        <button onClick={onClose} className="w-full sm:w-auto px-4 py-3 sm:py-2 text-gray-600 font-medium hover:bg-gray-100 rounded-lg transition">Cancelar</button>
+                        <button
+                            onClick={handleSave}
+                            disabled={saving}
+                            className="w-full sm:w-auto px-4 py-3 sm:py-2 bg-green-600 text-white font-bold rounded-lg disabled:opacity-50 hover:bg-green-700 transition"
+                        >
+                            {saving ? 'Generando...' : 'Crear Cuota'}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// Modal para crear Transacción manual
+function CreateTransactionModal({ chargeId, secret, onClose, onCreated }: { chargeId: string, secret: string, onClose: () => void, onCreated: () => void }) {
+    const [amount, setAmount] = useState<number | ''>('');
+    const [method, setMethod] = useState<string>('TRANSFER');
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
 
     const handleSave = async () => {
         setError('');
-        if (amount === '' || Number(amount) < 0 || !monthPeriod) {
-            setError('Ingresa un monto positivo y una fecha (YYYY-MM-DD)');
+        if (amount === '' || Number(amount) <= 0 || !method) {
+            setError('Ingresa un monto positivo y un método de pago');
             return;
         }
         setSaving(true);
         try {
-            const res = await fetch(`${API_URL}/admin/payments`, {
+            const res = await fetch(`${API_URL}/admin/transactions`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'x-admin-secret': secret },
                 body: JSON.stringify({
-                    client_id: clientId,
-                    amount: Number(amount),
-                    month_period: monthPeriod,
-                    status,
-                    method: method || null
+                    charge_id: chargeId,
+                    amount_paid: Number(amount),
+                    method
                 })
             });
             if (!res.ok) {
                 const text = await res.text();
-                setError(text || 'No se pudo crear el pago');
+                setError(text || 'No se pudo registrar la transacción');
                 setSaving(false);
                 return;
             }
-            const responseData = await res.json();
-            // Crear el objeto de pago con el ID retornado por el servidor
-            const newPayment: Payment = {
-                id: responseData.id || `temp-${Date.now()}`,
-                amount: Number(amount),
-                month_period: monthPeriod,
-                status: status as 'PENDING' | 'PAID',
-                method: method || null
-            };
-            onPaymentCreated(newPayment);
-        } catch (e) {
-            setError('Error de red al crear pago o pago ya creado');
+            onCreated();
+        } catch {
+            setError('Error de red al registrar transacción');
             setSaving(false);
         }
     };
 
     return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-md my-4">
-                <div className="bg-gray-100 px-4 md:px-6 py-3 md:py-4 border-b flex justify-between items-center">
-                    <h3 className="font-bold text-gray-800 text-base md:text-lg">Crear Pago</h3>
-                    <button onClick={onClose} className="p-2 hover:bg-gray-200 rounded-full">
-                        <X size={18} />
-                    </button>
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm my-4">
+                <div className="bg-gray-100 px-4 py-3 border-b flex justify-between items-center">
+                    <h3 className="font-bold text-gray-800 text-base">Registrar Abono</h3>
+                    <button onClick={onClose} className="p-2 hover:bg-gray-200 rounded-full"><X size={18} /></button>
                 </div>
-                <div className="p-4 md:p-6 space-y-3 md:space-y-4">
+                <div className="p-5 space-y-4">
                     <div>
-                        <label className="text-xs md:text-sm text-gray-600 block mb-1">Monto ($)</label>
+                        <label className="text-sm font-semibold text-gray-700 block mb-1">Monto Abonado ($)</label>
                         <input
                             type="number"
                             value={amount}
                             onChange={e => setAmount(e.target.value === '' ? '' : Number(e.target.value))}
-                            className="w-full px-3 py-2 border rounded text-sm md:text-base"
-                            min={0}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-base outline-none focus:ring-2 focus:ring-blue-500"
+                            min={1}
+                            placeholder="Ej. 50000"
+                            autoFocus
                         />
                     </div>
                     <div>
-                        <label className="text-xs md:text-sm text-gray-600 block mb-1">Periodo (YYYY-MM-DD)</label>
-                        <input
-                            type="date"
-                            value={monthPeriod}
-                            onChange={e => setMonthPeriod(e.target.value)}
-                            className="w-full px-3 py-2 border rounded text-sm md:text-base"
-                        />
+                        <label className="text-sm font-semibold text-gray-700 block mb-1">Método de Pago</label>
+                        <select
+                            value={method}
+                            onChange={e => setMethod(e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-base outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                            <option value="TRANSFER">Transferencia / Billetera Virtual</option>
+                            <option value="CASH">Efectivo</option>
+                        </select>
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
-                        <div>
-                            <label className="text-xs md:text-sm text-gray-600 block mb-1">Estado</label>
-                            <select
-                                value={status}
-                                onChange={e => setStatus(e.target.value as 'PENDING' | 'PAID')}
-                                className="w-full px-3 py-2 border rounded text-sm md:text-base"
-                            >
-                                <option value="PENDING">Pendiente</option>
-                                <option value="PAID">Pagado</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label className="text-xs md:text-sm text-gray-600 block mb-1">Método</label>
-                            <select
-                                value={method}
-                                onChange={e => setMethod(e.target.value)}
-                                className="w-full px-3 py-2 border rounded text-sm md:text-base"
-                            >
-                                <option value="">Sin registrar</option>
-                                <option value="CASH">Efectivo</option>
-                                <option value="TRANSFER">Transferencia</option>
-                            </select>
-                        </div>
-                    </div>
-                    {error && <p className="text-xs md:text-sm text-red-600">{error}</p>}
-                    <div className="flex justify-end gap-2 pt-2">
-                        <button onClick={onClose} className="px-3 py-2 border rounded text-sm md:text-base">Cancelar</button>
+                    {error && <p className="text-sm text-red-600 bg-red-50 p-2 rounded">{error}</p>}
+                    <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 pt-2">
+                        <button onClick={onClose} className="w-full sm:w-auto px-4 py-3 sm:py-2 text-gray-600 font-medium hover:bg-gray-100 rounded-lg transition">Cancelar</button>
                         <button
                             onClick={handleSave}
                             disabled={saving}
-                            className="px-3 py-2 rounded bg-green-600 text-white disabled:opacity-50 text-sm md:text-base"
+                            className="w-full sm:w-auto px-4 py-3 sm:py-2 bg-blue-600 text-white font-bold rounded-lg disabled:opacity-50 hover:bg-blue-700 transition"
                         >
-                            {saving ? 'Guardando...' : 'Crear pago'}
+                            {saving ? 'Registrando...' : 'Confirmar Abono'}
                         </button>
                     </div>
                 </div>
@@ -1291,9 +1356,9 @@ function WaitlistView({ secret }: { secret: string }) {
                 setDeletingId(null);
                 return;
             }
-            await fetchWaitlist();
-        } catch (e) {
-            alert('Error de red al eliminar');
+            fetchWaitlist();
+        } catch {
+            alert('Error de red al procesar acción');
         } finally {
             setDeletingId(null);
         }
@@ -1434,6 +1499,165 @@ function WaitlistView({ secret }: { secret: string }) {
                         {listMsg || 'No se encontraron registros'}
                     </div>
                 )}
+            </div>
+        </div>
+    );
+}
+
+// --- DASHBOARD VIEW ---
+function DashboardView({ secret }: { secret: string }) {
+    const [stats, setStats] = useState<DashboardStats | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
+    const [timeRange, setTimeRange] = useState<'current_month' | 'last_year'>('current_month');
+
+    useEffect(() => {
+        const fetchStats = async () => {
+            try {
+                const res = await fetch(`${API_URL}/admin/dashboard-stats`, {
+                    headers: { 'x-admin-secret': secret }
+                });
+                if (!res.ok) throw new Error('Error al cargar métricas');
+                const data = await res.json();
+                setStats(data);
+            } catch {
+                setError('No se pudieron cargar las métricas');
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchStats();
+    }, [secret]);
+
+    if (loading) return <div className="text-center py-10">Cargando métricas...</div>;
+    if (error || !stats) return <div className="text-center py-10 text-red-500">{error}</div>;
+
+    const formatMoney = (val: number) => `$${val.toLocaleString('es-AR')}`;
+
+    const activeStats = timeRange === 'current_month' ? stats.current_month : stats.last_year;
+    const titleText = timeRange === 'current_month' ? 'Mes Actual' : 'Últimos 12 Meses';
+
+    return (
+        <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                <h2 className="text-2xl font-bold text-gray-800">Resumen Financiero ({titleText})</h2>
+                <div className="flex bg-gray-100 p-1 rounded-lg">
+                    <button 
+                        onClick={() => setTimeRange('current_month')}
+                        className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${timeRange === 'current_month' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+                    >
+                        Mes Actual
+                    </button>
+                    <button 
+                        onClick={() => setTimeRange('last_year')}
+                        className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${timeRange === 'last_year' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+                    >
+                        Último Año
+                    </button>
+                </div>
+            </div>
+
+            {/* KPIs Principales */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-xl p-6 shadow-lg border border-gray-700 text-white relative overflow-hidden">
+                    <div className="absolute top-0 right-0 -mr-4 -mt-4 opacity-10">
+                        <DollarSign size={100} />
+                    </div>
+                    <p className="text-gray-400 font-medium mb-1">Total Facturado</p>
+                    <h3 className="text-3xl font-bold">{formatMoney(activeStats.invoiced)}</h3>
+                </div>
+                
+                <div className="bg-gradient-to-br from-blue-900 to-blue-800 rounded-xl p-6 shadow-lg border border-blue-700 text-white relative overflow-hidden">
+                    <div className="absolute top-0 right-0 -mr-4 -mt-4 opacity-10">
+                        <TrendingUp size={100} />
+                    </div>
+                    <p className="text-blue-200 font-medium mb-1">Total Recaudado</p>
+                    <h3 className="text-3xl font-bold">{formatMoney(activeStats.paid)}</h3>
+                </div>
+
+                <div className="bg-white rounded-xl p-6 shadow border border-gray-200">
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className="p-2 bg-green-100 text-green-600 rounded-lg">
+                            <DollarSign size={20} />
+                        </div>
+                        <p className="text-gray-500 font-medium">En Efectivo</p>
+                    </div>
+                    <h3 className="text-2xl font-bold text-gray-900">{formatMoney(activeStats.cash)}</h3>
+                </div>
+
+                <div className="bg-white rounded-xl p-6 shadow border border-gray-200">
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className="p-2 bg-purple-100 text-purple-600 rounded-lg">
+                            <CreditCard size={20} />
+                        </div>
+                        <p className="text-gray-500 font-medium">Por Transferencia</p>
+                    </div>
+                    <h3 className="text-2xl font-bold text-gray-900">{formatMoney(activeStats.transfer)}</h3>
+                </div>
+            </div>
+
+            {/* Gráficos y Deudores */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">
+                {/* Gráfico */}
+                <div className="lg:col-span-2 bg-white rounded-xl shadow border border-gray-200 p-6">
+                    <h3 className="text-lg font-bold text-gray-800 mb-6 flex items-center gap-2">
+                        <BarChart3 className="text-blue-600" />
+                        Evolución de Ingresos (Últimos 6 meses)
+                    </h3>
+                    <div className="h-[300px] w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={stats.history.slice().reverse()}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
+                                <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{fill: '#6B7280'}} />
+                                <YAxis 
+                                    axisLine={false} 
+                                    tickLine={false} 
+                                    tick={{fill: '#6B7280'}}
+                                    tickFormatter={(value) => `$${value/1000}k`}
+                                />
+                                <Tooltip 
+                                    cursor={{fill: '#F3F4F6'}}
+                                    formatter={(value: any) => [formatMoney(Number(value) || 0), 'Recaudación']}
+                                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                />
+                                <Bar dataKey="revenue" fill="#2563EB" radius={[4, 4, 0, 0]} barSize={40}>
+                                    {stats.history.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={index === 5 ? '#2563EB' : '#93C5FD'} />
+                                    ))}
+                                </Bar>
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+
+                {/* Deudores */}
+                <div className="bg-white rounded-xl shadow border border-gray-200 p-6">
+                    <div className="flex justify-between items-center mb-6">
+                        <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                            <AlertTriangle className="text-red-500" />
+                            Top Deudores
+                        </h3>
+                        <span className="text-xs font-bold bg-red-100 text-red-700 px-2 py-1 rounded-full">
+                            Deuda Total: {formatMoney(stats.total_debt)}
+                        </span>
+                    </div>
+
+                    <div className="space-y-4">
+                        {stats.top_debtors.length === 0 ? (
+                            <p className="text-sm text-gray-500 text-center py-4">No hay clientes con deudas activas.</p>
+                        ) : (
+                            stats.top_debtors.map((debtor, idx) => (
+                                <div key={idx} className="flex justify-between items-center border-b border-gray-100 pb-3 last:border-0">
+                                    <div>
+                                        <p className="font-semibold text-gray-800">{debtor.name}</p>
+                                        <p className="text-xs text-gray-500">{debtor.phone}</p>
+                                    </div>
+                                    <span className="font-bold text-red-600">{formatMoney(debtor.debt)}</span>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
             </div>
         </div>
     );

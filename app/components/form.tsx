@@ -80,6 +80,7 @@ export default function WaitingListSection() {
                     <div className="space-y-6 text-center md:text-left">
                         <div className="flex justify-center md:justify-start md:pl-4 pr-4">
                             <div className=" text-white w-26 h-26 rounded-lg flex items-center justify-center">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img src="/image.svg" alt="Logo Black Guardería La Chueca" />
                                 <h3 className='text-gray-900 font-bold '>GUARDERIA LA CHUECA</h3>
                             </div>
