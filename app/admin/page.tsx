@@ -214,7 +214,8 @@ export default function AdminPage() {
 function SettingsView({ secret }: { secret: string }) {
     const [feeSmall, setFeeSmall] = useState<string>('');
     const [feeLarge, setFeeLarge] = useState<string>('');
-        const [msg, setMsg] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [msg, setMsg] = useState('');
     const [error, setError] = useState('');
     const [generatingDebt, setGeneratingDebt] = useState(false);
     const [debtMsg, setDebtMsg] = useState('');
@@ -1409,6 +1410,7 @@ function CreateWaitlistModal({ secret, onClose, onCreated }: { secret: string, o
 // ==========================================
 function WaitlistView({ secret }: { secret: string }) {
     const [waitlist, setWaitlist] = useState<WaitlistEntry[]>([]);
+    const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState('');
     const [listMsg, setListMsg] = useState('');
     const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -1444,7 +1446,7 @@ function WaitlistView({ secret }: { secret: string }) {
             setListMsg(Array.isArray(data) && data.length === 0 ? 'No hay personas en la lista de espera' : '');
         } catch {
             setWaitlist([]);
-            setListMsg(`Error: ${e instanceof Error ? e.message : 'Error de red'}`);
+            setListMsg('Error de red');
         }
         setLoading(false);
     };
@@ -1890,7 +1892,7 @@ function DashboardView({ secret }: { secret: string }) {
                                 />
                                 <Tooltip
                                     cursor={{ fill: '#F3F4F6' }}
-                                    formatter={(value: number | string) => [formatMoney(Number(value) || 0), 'Recaudación']}
+                                    formatter={(value) => [formatMoney(Number(value) || 0), 'Recaudación']}
                                     contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                                 />
                                 <Bar dataKey="revenue" fill="#2563EB" radius={[4, 4, 0, 0]} barSize={40}>
