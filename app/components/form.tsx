@@ -62,7 +62,6 @@ export default function WaitingListSection() {
                 throw new Error('Error al enviar el formulario');
             }
         } catch (error) {
-            console.error(error); // Útil para depurar
             setStatus({
                 type: 'error',
                 message: 'Hubo un error al procesar tu solicitud. Por favor, intenta nuevamente.'

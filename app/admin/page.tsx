@@ -54,7 +54,7 @@ type OccupancyStats = {
     total_rentable_boxes: number;
     potential_revenue: number;
     waitlist_count: number;
-    top_waitlist: {name: string, phone: string, box_size: string}[];
+    top_waitlist: { name: string, phone: string, box_size: string }[];
 };
 
 type DashboardStats = {
@@ -134,8 +134,8 @@ export default function AdminPage() {
                     <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition mb-4">
                         Ingresar
                     </button>
-                    <Link 
-                        href="/" 
+                    <Link
+                        href="/"
                         className="flex items-center justify-center gap-2 text-sm text-gray-500 hover:text-blue-600 transition font-medium"
                     >
                         <ArrowLeft size={16} />
@@ -395,8 +395,8 @@ function SettingsView({ secret }: { secret: string }) {
                 </p>
 
                 <div className="flex flex-col sm:flex-row gap-3">
-                    <select 
-                        value={selectedDebtMonth} 
+                    <select
+                        value={selectedDebtMonth}
                         onChange={(e) => setSelectedDebtMonth(e.target.value as 'current' | 'next')}
                         className="px-3 md:px-4 py-2 border rounded-lg text-sm md:text-base outline-none focus:ring-2 focus:ring-orange-500 flex-1 bg-gray-50"
                         disabled={generatingDebt}
@@ -765,7 +765,7 @@ function ClientsView({ secret }: { secret: string }) {
 // COMPONENTE MODAL: GESTIÓN AVANZADA DE CUOTAS
 // ==========================================
 function ClientDetailModal({ client, secret, onClose, onRefresh }: { client: Client, secret: string, onClose: () => void, onRefresh: () => void }) {
-    const [showCreateTx, setShowCreateTx] = useState<string | null>(null);
+    const [showCreateTx, setShowCreateTx] = useState(false);
     const [showCreateCharge, setShowCreateCharge] = useState(false);
 
     return (
@@ -791,21 +791,30 @@ function ClientDetailModal({ client, secret, onClose, onRefresh }: { client: Cli
                 <div className="p-4 md:p-6 space-y-4 md:space-y-6">
                     <div className="flex justify-between items-center border-b pb-2">
                         <h3 className="font-bold text-gray-700 text-sm md:text-base">Historial de Cuotas</h3>
-                        <button 
-                            onClick={() => setShowCreateCharge(true)}
-                            className="bg-green-600 text-white px-3 py-1.5 rounded-lg text-xs md:text-sm font-medium hover:bg-green-700 transition flex items-center gap-1"
-                        >
-                            <Plus size={16} /> <span className="hidden sm:inline">Generar Cuota Adelantada</span><span className="sm:hidden">Adelantar</span>
-                        </button>
+                        <div className="flex gap-2">
+                            {client.charges.some(c => c.status === 'PENDING' || c.status === 'PARTIAL') && (
+                                <button
+                                    onClick={() => setShowCreateTx(true)}
+                                    className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs md:text-sm font-medium hover:bg-blue-700 transition flex items-center gap-1"
+                                >
+                                    <span className="hidden sm:inline">Abonar Saldo</span><span className="sm:hidden">Abonar</span>
+                                </button>
+                            )}
+                            <button
+                                onClick={() => setShowCreateCharge(true)}
+                                className="bg-green-600 text-white px-3 py-1.5 rounded-lg text-xs md:text-sm font-medium hover:bg-green-700 transition flex items-center gap-1"
+                            >
+                                <Plus size={16} /> <span className="hidden sm:inline">Generar Cuota Adelantada</span><span className="sm:hidden">Adelantar</span>
+                            </button>
+                        </div>
                     </div>
-                    
+
                     {[...client.charges].sort((a, b) => new Date(b.month_period).getTime() - new Date(a.month_period).getTime()).map((charge) => (
                         <ChargeRow
                             key={charge.id}
                             charge={charge}
                             secret={secret}
                             onRefresh={onRefresh}
-                            onAddTransaction={(id) => setShowCreateTx(id)}
                         />
                     ))}
 
@@ -814,11 +823,11 @@ function ClientDetailModal({ client, secret, onClose, onRefresh }: { client: Cli
 
                 {showCreateTx && (
                     <CreateTransactionModal
-                        chargeId={showCreateTx}
+                        clientId={client.id}
                         secret={secret}
-                        onClose={() => setShowCreateTx(null)}
+                        onClose={() => setShowCreateTx(false)}
                         onCreated={() => {
-                            setShowCreateTx(null);
+                            setShowCreateTx(false);
                             onRefresh();
                         }}
                     />
@@ -840,7 +849,7 @@ function ClientDetailModal({ client, secret, onClose, onRefresh }: { client: Cli
     );
 }
 
-function ChargeRow({ charge, secret, onRefresh, onAddTransaction }: { charge: Charge, secret: string, onRefresh: () => void, onAddTransaction: (id: string) => void }) {
+function ChargeRow({ charge, secret, onRefresh }: { charge: Charge, secret: string, onRefresh: () => void }) {
     const handleDeleteTx = async (txId: string) => {
         if (!window.confirm('¿Eliminar esta transacción? Esto revertirá el saldo y el estado de la cuota.')) return;
         try {
@@ -853,7 +862,7 @@ function ChargeRow({ charge, secret, onRefresh, onAddTransaction }: { charge: Ch
                 const text = await res.text();
                 alert(text || 'Error al eliminar la transacción');
             }
-        } catch(e) { alert('Error de red'); }
+        } catch (e) { alert('Error de red'); }
     };
 
     return (
@@ -867,14 +876,9 @@ function ChargeRow({ charge, secret, onRefresh, onAddTransaction }: { charge: Ch
                 </div>
                 <div className="flex flex-row justify-between items-center w-full sm:w-auto gap-3">
                     <span className="font-bold text-lg text-gray-800">${charge.total_amount.toLocaleString()}</span>
-                    {(charge.status === 'PENDING' || charge.status === 'PARTIAL') && (
-                        <button onClick={() => onAddTransaction(charge.id)} className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-blue-700 transition">
-                            Abonar
-                        </button>
-                    )}
                 </div>
             </div>
-            
+
             {charge.transactions.length > 0 && (
                 <div className="mt-3 bg-white p-3 rounded-lg border border-gray-100 shadow-sm">
                     <h4 className="text-xs font-semibold text-gray-500 mb-2 uppercase">Transacciones registradas:</h4>
@@ -886,7 +890,7 @@ function ChargeRow({ charge, secret, onRefresh, onAddTransaction }: { charge: Ch
                             </div>
                             <div className="flex flex-row items-center justify-between sm:justify-end gap-3 w-full sm:w-auto">
                                 <span className="font-bold text-green-600">+${tx.amount_paid.toLocaleString()}</span>
-                                <button onClick={() => handleDeleteTx(tx.id)} className="text-red-500 hover:text-red-700 p-1 bg-red-50 hover:bg-red-100 rounded transition" title="Eliminar Transacción"><Trash2 size={16}/></button>
+                                <button onClick={() => handleDeleteTx(tx.id)} className="text-red-500 hover:text-red-700 p-1 bg-red-50 hover:bg-red-100 rounded transition" title="Eliminar Transacción"><Trash2 size={16} /></button>
                             </div>
                         </div>
                     ))}
@@ -1207,7 +1211,7 @@ function CreateManualChargeModal({ clientId, secret, onClose, onCreated }: { cli
 }
 
 // Modal para crear Transacción manual
-function CreateTransactionModal({ chargeId, secret, onClose, onCreated }: { chargeId: string, secret: string, onClose: () => void, onCreated: () => void }) {
+function CreateTransactionModal({ clientId, secret, onClose, onCreated }: { clientId: string, secret: string, onClose: () => void, onCreated: () => void }) {
     const [amount, setAmount] = useState<number | ''>('');
     const [method, setMethod] = useState<string>('TRANSFER');
     const [saving, setSaving] = useState(false);
@@ -1221,11 +1225,10 @@ function CreateTransactionModal({ chargeId, secret, onClose, onCreated }: { char
         }
         setSaving(true);
         try {
-            const res = await fetch(`${API_URL}/admin/transactions`, {
+            const res = await fetch(`${API_URL}/admin/clients/${clientId}/transactions`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'x-admin-secret': secret },
                 body: JSON.stringify({
-                    charge_id: chargeId,
                     amount_paid: Number(amount),
                     method
                 })
@@ -1400,17 +1403,14 @@ function WaitlistView({ secret }: { secret: string }) {
             }
 
             const url = `${API_URL}/admin/waiting-list`;
-            console.log('Fetching waitlist from:', url);
 
             const res = await fetch(url, {
                 headers: { 'x-admin-secret': secret }
             });
 
-            console.log('Response status:', res.status);
 
             if (!res.ok) {
                 const errorText = await res.text();
-                console.error('Error response:', errorText);
                 setWaitlist([]);
                 setListMsg(`Error al cargar: ${res.status} - ${errorText || 'Error desconocido'}`);
                 setLoading(false);
@@ -1418,11 +1418,9 @@ function WaitlistView({ secret }: { secret: string }) {
             }
 
             const data = await res.json();
-            console.log('Waitlist data:', data);
             setWaitlist(Array.isArray(data) ? data : []);
             setListMsg(Array.isArray(data) && data.length === 0 ? 'No hay personas en la lista de espera' : '');
         } catch (e) {
-            console.error('Fetch error:', e);
             setWaitlist([]);
             setListMsg(`Error: ${e instanceof Error ? e.message : 'Error de red'}`);
         }
@@ -1544,7 +1542,7 @@ function WaitlistView({ secret }: { secret: string }) {
                                     {formatDate(entry.created_at)}
                                 </td>
                                 <td className="px-6 py-4 flex justify-center gap-3">
-                                    <a 
+                                    <a
                                         href={buildWaitlistWhatsAppLink(entry)}
                                         target="_blank"
                                         rel="noreferrer"
@@ -1607,7 +1605,7 @@ function WaitlistView({ secret }: { secret: string }) {
                         </div>
 
                         <div className="flex gap-2 mt-2">
-                            <a 
+                            <a
                                 href={buildWaitlistWhatsAppLink(entry)}
                                 target="_blank"
                                 rel="noreferrer"
@@ -1633,7 +1631,7 @@ function WaitlistView({ secret }: { secret: string }) {
             </div>
 
             {showCreate && (
-                <CreateWaitlistModal 
+                <CreateWaitlistModal
                     secret={secret}
                     onClose={() => setShowCreate(false)}
                     onCreated={() => {
@@ -1680,16 +1678,16 @@ function DashboardView({ secret }: { secret: string }) {
     const activeStats = timeRange === 'current_month' ? stats.current_month : stats.last_year;
     const titleText = timeRange === 'current_month' ? 'Mes Actual' : 'Últimos 12 Meses';
 
-    const percentPaid = activeStats.invoiced > 0 
+    const percentPaid = activeStats.invoiced > 0
         ? ((activeStats.paid / activeStats.invoiced) * 100).toFixed(1)
         : '0.0';
 
-    const buildDebtorWhatsAppLink = (debtor: {name: string, phone: string}) => {
+    const buildDebtorWhatsAppLink = (debtor: { name: string, phone: string }) => {
         const message = `Hola ${debtor.name.split(" ")[0]} 👋, buen día.\nTe escribo para recordarte que el 10 vence el plazo para abonar tu cuota de la guarderia con descuento 🚤. \nPodés ver tu saldo actualizado, los datos de la cuenta y planes de pago en el siguiente link:\n🔗https://guarderialachueca.com/status/${debtor.phone} \n👉Importante:\n- En caso de transferir enviá el comprobante por este chat.\n- Si pagás en efectivo, escribime para coordinar.`;
         return `https://wa.me/${debtor.phone.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
     };
 
-    const buildDashboardWaitlistWhatsAppLink = (candidate: {name: string, phone: string, box_size: string}) => {
+    const buildDashboardWaitlistWhatsAppLink = (candidate: { name: string, phone: string, box_size: string }) => {
         const message = `Hola ${candidate.name.split(" ")[0]} 👋, buen día.\nTe escribo de Guardería La Chueca 🚤. \nTe contactamos porque se nos ha liberado un box tamaño ${candidate.box_size} y vimos que estabas en nuestra lista de espera.\nSi seguís interesado/a, confirmame por este medio así coordinamos. ¡Saludos!`;
         return `https://wa.me/${candidate.phone.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
     };
@@ -1699,13 +1697,13 @@ function DashboardView({ secret }: { secret: string }) {
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                 <h2 className="text-2xl font-bold text-gray-800">Resumen Financiero ({titleText})</h2>
                 <div className="flex bg-gray-100 p-1 rounded-lg">
-                    <button 
+                    <button
                         onClick={() => setTimeRange('current_month')}
                         className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${timeRange === 'current_month' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
                     >
                         Mes Actual
                     </button>
-                    <button 
+                    <button
                         onClick={() => setTimeRange('last_year')}
                         className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${timeRange === 'last_year' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
                     >
@@ -1723,7 +1721,7 @@ function DashboardView({ secret }: { secret: string }) {
                     <p className="text-gray-400 font-medium mb-1">Total Facturado</p>
                     <h3 className="text-3xl font-bold">{formatMoney(activeStats.invoiced)}</h3>
                 </div>
-                
+
                 <div className="bg-gradient-to-br from-blue-900 to-blue-800 rounded-xl p-6 shadow-lg border border-blue-700 text-white relative overflow-hidden">
                     <div className="absolute top-0 right-0 -mr-4 -mt-4 opacity-10">
                         <TrendingUp size={100} />
@@ -1822,7 +1820,7 @@ function DashboardView({ secret }: { secret: string }) {
                                             <p className="text-sm font-semibold text-gray-800 truncate">{candidate.name}</p>
                                             <p className="text-xs text-gray-500">Box: {candidate.box_size}</p>
                                         </div>
-                                        <a 
+                                        <a
                                             href={buildDashboardWaitlistWhatsAppLink(candidate)}
                                             target="_blank"
                                             rel="noreferrer"
@@ -1848,8 +1846,8 @@ function DashboardView({ secret }: { secret: string }) {
                             <BarChart3 className="text-blue-600" />
                             Evolución de Ingresos
                         </h3>
-                        <select 
-                            value={historyMonths} 
+                        <select
+                            value={historyMonths}
                             onChange={(e) => setHistoryMonths(Number(e.target.value) as 6 | 12)}
                             className="text-sm border border-gray-200 rounded-md px-2 py-1 outline-none focus:ring-2 focus:ring-blue-500"
                         >
@@ -1861,15 +1859,15 @@ function DashboardView({ secret }: { secret: string }) {
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={stats.history.slice(-historyMonths)}>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                                <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{fill: '#6B7280'}} />
-                                <YAxis 
-                                    axisLine={false} 
-                                    tickLine={false} 
-                                    tick={{fill: '#6B7280'}}
-                                    tickFormatter={(value) => `$${value/1000}k`}
+                                <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: '#6B7280' }} />
+                                <YAxis
+                                    axisLine={false}
+                                    tickLine={false}
+                                    tick={{ fill: '#6B7280' }}
+                                    tickFormatter={(value) => `$${value / 1000}k`}
                                 />
-                                <Tooltip 
-                                    cursor={{fill: '#F3F4F6'}}
+                                <Tooltip
+                                    cursor={{ fill: '#F3F4F6' }}
                                     formatter={(value: any) => [formatMoney(Number(value) || 0), 'Recaudación']}
                                     contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                                 />
@@ -1907,7 +1905,7 @@ function DashboardView({ secret }: { secret: string }) {
                                     </div>
                                     <div className="flex items-center gap-3">
                                         <span className="font-bold text-red-600">{formatMoney(debtor.debt)}</span>
-                                        <a 
+                                        <a
                                             href={buildDebtorWhatsAppLink(debtor)}
                                             target="_blank"
                                             rel="noreferrer"
