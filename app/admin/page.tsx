@@ -214,7 +214,8 @@ export default function AdminPage() {
 // VISTA 1: CONFIGURACIÓN (PRECIO)
 // ==========================================
 function SettingsView({ secret }: { secret: string }) {
-    const [fee, setFee] = useState<string>('');
+    const [feeSmall, setFeeSmall] = useState<string>('');
+    const [feeLarge, setFeeLarge] = useState<string>('');
     const [loading, setLoading] = useState(false);
     const [msg, setMsg] = useState('');
     const [error, setError] = useState('');
@@ -244,7 +245,10 @@ function SettingsView({ secret }: { secret: string }) {
                 }
 
                 const data = await res.json();
-                if (data?.value) setFee(data.value);
+                if (data) {
+                    if (data.fee_small) setFeeSmall(data.fee_small.toString());
+                    if (data.fee_large) setFeeLarge(data.fee_large.toString());
+                }
             } catch (err) {
                 setError('Error de conexión al cargar la cuota');
             }
@@ -290,9 +294,10 @@ function SettingsView({ secret }: { secret: string }) {
         setError('');
         setLoading(true);
         try {
-            const parsed = parseFloat(fee);
-            if (!Number.isFinite(parsed) || parsed <= 0) {
-                setError('Ingresa un valor numérico mayor a 0');
+            const parsedSmall = parseFloat(feeSmall);
+            const parsedLarge = parseFloat(feeLarge);
+            if (!Number.isFinite(parsedSmall) || parsedSmall <= 0 || !Number.isFinite(parsedLarge) || parsedLarge <= 0) {
+                setError('Ingresa valores numéricos mayores a 0');
                 setLoading(false);
                 return;
             }
@@ -300,11 +305,11 @@ function SettingsView({ secret }: { secret: string }) {
             const res = await fetch(`${API_URL}/admin/settings/fee`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'x-admin-secret': secret },
-                body: JSON.stringify({ fee: parsed })
+                body: JSON.stringify({ fee_small: parsedSmall, fee_large: parsedLarge })
             });
             if (res.ok) {
                 const data = await res.json();
-                setMsg(`✅ Precio actualizado correctamente. ${data.payments_updated || 0} pagos pendientes recalculados.`);
+                setMsg(`✅ Precio actualizado correctamente. ${data.charges_updated || 0} pagos pendientes recalculados.`);
             }
             else setMsg('❌ Error al actualizar');
         } catch (e) {
@@ -362,14 +367,25 @@ function SettingsView({ secret }: { secret: string }) {
                 </p>
 
                 <div className="space-y-3 md:space-y-4">
-                    <div>
-                        <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1">Precio Actual ($)</label>
-                        <input
-                            type="number"
-                            value={fee}
-                            onChange={e => setFee(e.target.value)}
-                            className="w-full px-3 md:px-4 py-2 border rounded-lg text-sm md:text-base"
-                        />
+                    <div className="flex flex-col sm:flex-row gap-4">
+                        <div className="flex-1">
+                            <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1">Precio Boxes Grandes (1-10) ($)</label>
+                            <input
+                                type="number"
+                                value={feeLarge}
+                                onChange={e => setFeeLarge(e.target.value)}
+                                className="w-full px-3 md:px-4 py-2 border rounded-lg text-sm md:text-base"
+                            />
+                        </div>
+                        <div className="flex-1">
+                            <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1">Precio Boxes Chicos (11-29) ($)</label>
+                            <input
+                                type="number"
+                                value={feeSmall}
+                                onChange={e => setFeeSmall(e.target.value)}
+                                className="w-full px-3 md:px-4 py-2 border rounded-lg text-sm md:text-base"
+                            />
+                        </div>
                     </div>
 
                     <button
