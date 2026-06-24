@@ -135,35 +135,37 @@ export default function Home() {
                   {/* Lista de meses pendientes */}
                   <div className="space-y-3 mb-4">
                     {pendingPayments.map((p) => {
-                      // Verificamos si este pago corresponde al mes actual y si el cliente tiene descuento habilitado
-                      // Nota: Asegúrate de que p.month_period sea comparable con el mes actual de la forma que lo haces
                       const isCurrentMonth = p.month_period.slice(5, 7) === (new Date().getMonth() + 1).toString().padStart(2, '0');
                       const hasDiscount = clientData.has_discount_current_month && isCurrentMonth;
 
-                      // Calculamos el precio con descuento (ajusta el 0.08 al porcentaje real que uses en el backend)
-                      const discountedPrice = p.total_amount * (1 - 0.08);
+                      const baseAmount = hasDiscount ? p.total_amount * (1 - 0.08) : p.total_amount;
+                      const paidSoFar = p.transactions ? p.transactions.reduce((sum, tx) => sum + tx.amount_paid, 0) : 0;
+                      const remainingAmount = baseAmount - paidSoFar;
 
                       return (
-                        <div key={p.id} className="flex justify-between items-center text-sm border-b border-gray-200 pb-2 last:border-0">
-                          <span className="text-gray-500 capitalize">{p.month_period}</span>
+                        <div key={p.id} className="flex justify-between items-center text-sm border-b border-gray-200 pb-3 pt-2 last:border-0">
+                          <div>
+                            <span className="text-gray-600 capitalize block">{p.month_period}</span>
+                            {paidSoFar > 0 && (
+                              <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full mt-1 inline-block">
+                                Abonado: ${paidSoFar.toLocaleString("es-AR")}
+                              </span>
+                            )}
+                          </div>
 
-                          <div className="flex items-center gap-2">
-                            {hasDiscount ? (
+                          <div className="flex flex-col items-end">
+                            {hasDiscount && paidSoFar === 0 ? (
                               <>
-                                {/* 1. Precio Original: Gris y Tachado */}
                                 <span className="text-gray-400 line-through text-xs">
                                   ${p.total_amount.toLocaleString("es-AR")}
                                 </span>
-
-                                {/* 2. Precio con Descuento: Verde y Destacado */}
-                                <span className="font-bold text-green-600">
-                                  ${discountedPrice.toLocaleString("es-AR")}
+                                <span className="font-bold text-green-600 text-base">
+                                  ${remainingAmount.toLocaleString("es-AR")}
                                 </span>
                               </>
                             ) : (
-                              /* Si no hay descuento, mostramos el precio normal en gris oscuro/negro */
-                              <span className="font-semibold text-gray-900">
-                                ${p.total_amount.toLocaleString("es-AR")}
+                              <span className="font-bold text-gray-900 text-base">
+                                ${remainingAmount.toLocaleString("es-AR")}
                               </span>
                             )}
                           </div>
