@@ -4,9 +4,8 @@ import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import {
-    Lock, Settings, Users, Search, Plus,
-    Trash2, Edit2, Check, X, DollarSign, Save, Clock, RefreshCw, ArrowLeft, BarChart3, TrendingUp, AlertTriangle, CreditCard, MessageCircle, Home, CheckCircle, ListOrdered, Target, Activity
-} from 'lucide-react';
+    Settings, Users, Search, Plus,
+    Trash2, Edit2, X, DollarSign, Clock, RefreshCw, ArrowLeft, BarChart3, TrendingUp, AlertTriangle, CreditCard, MessageCircle, Home, CheckCircle, ListOrdered, Target, } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 // --- TIPOS (Types) ---
@@ -73,8 +72,7 @@ export default function AdminPage() {
     const [secret, setSecret] = useState('');
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [activeTab, setActiveTab] = useState<'dashboard' | 'clients' | 'settings' | 'waitlist'>('dashboard');
-    const [loading, setLoading] = useState(false);
-    const [loginError, setLoginError] = useState('');
+        const [loginError, setLoginError] = useState('');
 
     // --- LÓGICA DE LOGIN ---
     const handleLogin = async (e: React.FormEvent) => {
@@ -103,7 +101,7 @@ export default function AdminPage() {
             }
 
             setIsAuthenticated(true);
-        } catch (err) {
+        } catch {
             setLoginError('No se pudo verificar, revisa la conexión');
         }
     };
@@ -216,8 +214,7 @@ export default function AdminPage() {
 function SettingsView({ secret }: { secret: string }) {
     const [feeSmall, setFeeSmall] = useState<string>('');
     const [feeLarge, setFeeLarge] = useState<string>('');
-    const [loading, setLoading] = useState(false);
-    const [msg, setMsg] = useState('');
+        const [msg, setMsg] = useState('');
     const [error, setError] = useState('');
     const [generatingDebt, setGeneratingDebt] = useState(false);
     const [debtMsg, setDebtMsg] = useState('');
@@ -234,7 +231,8 @@ function SettingsView({ secret }: { secret: string }) {
                 const res = await fetch(`${API_URL}/admin/settings/fee`, { headers: { 'x-admin-secret': secret } });
 
                 if (res.status === 404) {
-                    setFee('');
+                    setFeeSmall('');
+                    setFeeLarge('');
                     setMsg('Configura el valor por primera vez');
                     return;
                 }
@@ -246,10 +244,19 @@ function SettingsView({ secret }: { secret: string }) {
 
                 const data = await res.json();
                 if (data) {
-                    if (data.fee_small) setFeeSmall(data.fee_small.toString());
-                    if (data.fee_large) setFeeLarge(data.fee_large.toString());
+                    if (data.fee_small !== undefined) {
+                        setFeeSmall(data.fee_small.toString());
+                    } else if (data.value !== undefined) {
+                        setFeeSmall(data.value.toString());
+                    }
+
+                    if (data.fee_large !== undefined) {
+                        setFeeLarge(data.fee_large.toString());
+                    } else if (data.value !== undefined) {
+                        setFeeLarge(data.value.toString());
+                    }
                 }
-            } catch (err) {
+            } catch {
                 setError('Error de conexión al cargar la cuota');
             }
         };
@@ -274,7 +281,7 @@ function SettingsView({ secret }: { secret: string }) {
 
                 const data = await res.json();
                 setClientsForMessages(Array.isArray(data) ? data : []);
-            } catch (err) {
+            } catch {
                 setClientsError('No pude cargar la lista de clientes');
                 setClientsForMessages([]);
             } finally {
@@ -312,7 +319,7 @@ function SettingsView({ secret }: { secret: string }) {
                 setMsg(`✅ Precio actualizado correctamente. ${data.charges_updated || 0} pagos pendientes recalculados.`);
             }
             else setMsg('❌ Error al actualizar');
-        } catch (e) {
+        } catch {
             setMsg('❌ Error de conexión');
         }
         setLoading(false);
@@ -348,7 +355,7 @@ function SettingsView({ secret }: { secret: string }) {
 
             const data = await res.json();
             setDebtMsg(`✅ ${data.message}. Periodo: ${data.period}. Pagos creados: ${data.payments_created}`);
-        } catch (e) {
+        } catch {
             setDebtMsg('❌ Error de conexión al generar deudas');
         }
         setGeneratingDebt(false);
@@ -374,7 +381,7 @@ function SettingsView({ secret }: { secret: string }) {
                                 type="number"
                                 value={feeLarge}
                                 onChange={e => setFeeLarge(e.target.value)}
-                                className="w-full px-3 md:px-4 py-2 border rounded-lg text-sm md:text-base"
+                                className="w-full px-3 md:px-4 py-2 border rounded-lg text-sm md:text-base text-gray-900 bg-white"
                             />
                         </div>
                         <div className="flex-1">
@@ -383,7 +390,7 @@ function SettingsView({ secret }: { secret: string }) {
                                 type="number"
                                 value={feeSmall}
                                 onChange={e => setFeeSmall(e.target.value)}
-                                className="w-full px-3 md:px-4 py-2 border rounded-lg text-sm md:text-base"
+                                className="w-full px-3 md:px-4 py-2 border rounded-lg text-sm md:text-base text-gray-900 bg-white"
                             />
                         </div>
                     </div>
@@ -515,7 +522,7 @@ function ClientsView({ secret }: { secret: string }) {
             const data = await res.json();
             setClients(Array.isArray(data) ? data : []);
             setListMsg(Array.isArray(data) && data.length === 0 ? 'No hay clientes cargados' : '');
-        } catch (e) {
+        } catch {
             setClients([]);
             setListMsg('Error de red al cargar clientes');
         }
@@ -559,7 +566,7 @@ function ClientsView({ secret }: { secret: string }) {
                 return;
             }
             await fetchClients();
-        } catch (e) {
+        } catch {
             alert('Error de red al eliminar');
         } finally {
             setDeletingId(null);
@@ -878,7 +885,7 @@ function ChargeRow({ charge, secret, onRefresh }: { charge: Charge, secret: stri
                 const text = await res.text();
                 alert(text || 'Error al eliminar la transacción');
             }
-        } catch (e) { alert('Error de red'); }
+        } catch { alert('Error de red'); }
     };
 
     return (
@@ -950,7 +957,7 @@ function CreateClientModal({ secret, onClose, onCreated }: { secret: string, onC
                 return;
             }
             onCreated();
-        } catch (e) {
+        } catch {
             setError('Error de red al crear cliente');
             setSaving(false);
         }
@@ -1060,7 +1067,7 @@ function EditClientModal({ secret, client, onClose, onUpdated }: { secret: strin
                 return;
             }
             onUpdated();
-        } catch (e) {
+        } catch {
             setError('Error de red al actualizar cliente');
             setSaving(false);
         }
@@ -1346,7 +1353,7 @@ function CreateWaitlistModal({ secret, onClose, onCreated }: { secret: string, o
                 return;
             }
             onCreated();
-        } catch (e) {
+        } catch {
             setError('Error de red al crear entrada');
             setSaving(false);
         }
@@ -1405,8 +1412,7 @@ function WaitlistView({ secret }: { secret: string }) {
     const [search, setSearch] = useState('');
     const [listMsg, setListMsg] = useState('');
     const [deletingId, setDeletingId] = useState<string | null>(null);
-    const [loading, setLoading] = useState(false);
-    const [showCreate, setShowCreate] = useState(false);
+        const [showCreate, setShowCreate] = useState(false);
 
     const fetchWaitlist = async () => {
         setLoading(true);
@@ -1436,7 +1442,7 @@ function WaitlistView({ secret }: { secret: string }) {
             const data = await res.json();
             setWaitlist(Array.isArray(data) ? data : []);
             setListMsg(Array.isArray(data) && data.length === 0 ? 'No hay personas en la lista de espera' : '');
-        } catch (e) {
+        } catch {
             setWaitlist([]);
             setListMsg(`Error: ${e instanceof Error ? e.message : 'Error de red'}`);
         }
@@ -1884,7 +1890,7 @@ function DashboardView({ secret }: { secret: string }) {
                                 />
                                 <Tooltip
                                     cursor={{ fill: '#F3F4F6' }}
-                                    formatter={(value: any) => [formatMoney(Number(value) || 0), 'Recaudación']}
+                                    formatter={(value: number | string) => [formatMoney(Number(value) || 0), 'Recaudación']}
                                     contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                                 />
                                 <Bar dataKey="revenue" fill="#2563EB" radius={[4, 4, 0, 0]} barSize={40}>

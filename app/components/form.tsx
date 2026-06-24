@@ -61,7 +61,7 @@ export default function WaitingListSection() {
             } else {
                 throw new Error('Error al enviar el formulario');
             }
-        } catch (error) {
+        } catch {
             setStatus({
                 type: 'error',
                 message: 'Hubo un error al procesar tu solicitud. Por favor, intenta nuevamente.'
