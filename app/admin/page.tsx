@@ -5,7 +5,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import {
     Settings, Users, Search, Plus,
-    Trash2, Edit2, X, DollarSign, Clock, RefreshCw, ArrowLeft, BarChart3, TrendingUp, AlertTriangle, CreditCard, MessageCircle, Home, CheckCircle, ListOrdered, Target, } from 'lucide-react';
+    Trash2, Edit2, X, DollarSign, Clock, RefreshCw, ArrowLeft, BarChart3, TrendingUp, AlertTriangle, CreditCard, MessageCircle, Home, CheckCircle, ListOrdered, Target, Check
+} from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 // --- TIPOS (Types) ---
@@ -874,6 +875,11 @@ function ClientDetailModal({ client, secret, onClose, onRefresh }: { client: Cli
 }
 
 function ChargeRow({ charge, secret, onRefresh }: { charge: Charge, secret: string, onRefresh: () => void }) {
+    const [isEditing, setIsEditing] = useState(false);
+    const [amount, setAmount] = useState<number | ''>(charge.total_amount);
+    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState('');
+
     const handleDeleteTx = async (txId: string) => {
         if (!window.confirm('¿Eliminar esta transacción? Esto revertirá el saldo y el estado de la cuota.')) return;
         try {
@@ -889,6 +895,40 @@ function ChargeRow({ charge, secret, onRefresh }: { charge: Charge, secret: stri
         } catch { alert('Error de red'); }
     };
 
+    const handleUpdateCharge = async () => {
+        setError('');
+        if (amount === '' || Number(amount) <= 0) {
+            setError('Ingresa un monto válido mayor a 0');
+            return;
+        }
+        if (Number(amount) === charge.total_amount) {
+            setIsEditing(false);
+            return;
+        }
+        setSaving(true);
+        try {
+            const res = await fetch(`${API_URL}/admin/charges/${charge.id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-admin-secret': secret
+                },
+                body: JSON.stringify({ total_amount: Number(amount) })
+            });
+            if (res.ok) {
+                setIsEditing(false);
+                onRefresh();
+            } else {
+                const data = await res.json().catch(() => ({}));
+                setError(data.detail || 'Error al actualizar el valor de la cuota');
+            }
+        } catch {
+            setError('Error de red al actualizar la cuota');
+        } finally {
+            setSaving(false);
+        }
+    };
+
     return (
         <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-4">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-2 gap-3">
@@ -898,9 +938,58 @@ function ChargeRow({ charge, secret, onRefresh }: { charge: Charge, secret: stri
                         {charge.status === 'PAID' ? 'PAGADO' : charge.status === 'PARTIAL' ? 'PARCIAL' : 'PENDIENTE'}
                     </span>
                 </div>
-                <div className="flex flex-row justify-between items-center w-full sm:w-auto gap-3">
-                    <span className="font-bold text-lg text-gray-800">${charge.total_amount.toLocaleString()}</span>
-                </div>
+
+                {isEditing ? (
+                    <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2 w-full sm:w-auto">
+                        <div className="flex items-center gap-1.5 w-full sm:w-auto">
+                            <span className="text-gray-500 font-bold">$</span>
+                            <input
+                                type="number"
+                                value={amount}
+                                onChange={(e) => setAmount(e.target.value === '' ? '' : Number(e.target.value))}
+                                className="w-32 px-2 py-1 border border-blue-400 rounded text-base font-bold text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                min={1}
+                                autoFocus
+                            />
+                            <button
+                                onClick={handleUpdateCharge}
+                                disabled={saving}
+                                className="bg-green-600 hover:bg-green-700 text-white p-1.5 rounded transition disabled:opacity-50 flex items-center justify-center"
+                                title="Guardar cambios"
+                            >
+                                <Check size={16} />
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setIsEditing(false);
+                                    setAmount(charge.total_amount);
+                                    setError('');
+                                }}
+                                disabled={saving}
+                                className="bg-gray-200 hover:bg-gray-300 text-gray-700 p-1.5 rounded transition flex items-center justify-center"
+                                title="Cancelar"
+                            >
+                                <X size={16} />
+                            </button>
+                        </div>
+                        {error && <span className="text-xs text-red-600 font-medium">{error}</span>}
+                    </div>
+                ) : (
+                    <div className="flex flex-row justify-between items-center w-full sm:w-auto gap-2">
+                        <span className="font-bold text-lg text-gray-800">${charge.total_amount.toLocaleString()}</span>
+                        <button
+                            onClick={() => {
+                                setIsEditing(true);
+                                setAmount(charge.total_amount);
+                                setError('');
+                            }}
+                            className="text-gray-400 hover:text-blue-600 p-1.5 rounded hover:bg-blue-50 transition"
+                            title="Editar valor de la cuota"
+                        >
+                            <Edit2 size={15} />
+                        </button>
+                    </div>
+                )}
             </div>
 
             {charge.transactions.length > 0 && (
